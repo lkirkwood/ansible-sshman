@@ -1,9 +1,12 @@
 mod inventory;
+mod config;
 mod error;
 
 use std::fs;
 
 use clap::Parser;
+
+use crate::inventory::SectionContainer;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -19,12 +22,14 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let content = fs::read_to_string(args.inventory).unwrap();
-    let inv = inventory::InventoryParser::inv_from_string(content);
-    if inv.is_ok() {
-        println!("Inventory OK!");
-        println!("{:?}", inv);
-    } else {
-        println!("{}", inv.unwrap_err());
+    let inv_content = fs::read_to_string(args.inventory).expect("Failed to read inventory file.");
+    let conf_content = fs::read_to_string(args.config).expect("Failed to read config file.");
+
+    let inv = inventory::InventoryParser::inv_from_string(inv_content).unwrap();
+    let conf = config::SSHConfigParser::conf_from_string(inv, conf_content).unwrap();
+
+    for user in &conf.users {
+        println!("User {} can access section {} with hosts {:?}", 
+            user.name, user.access, conf.get_hosts(&user));
     }
 }
