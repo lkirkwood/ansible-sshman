@@ -1,13 +1,26 @@
-use std::{error::Error, collections::HashMap};
-
 use crate::{inventory::{SectionContainer, Inventory}, error::InvalidConfigError};
 
-use yaml_rust::{YamlLoader, Yaml, YamlEmitter, yaml::Hash};
+use std::{error::Error, collections::{HashMap, HashSet}};
+use yaml_rust::{YamlLoader, Yaml};
+use serde::ser::{Serialize, SerializeSeq};
 
+#[derive(Debug, Hash, Eq, PartialEq)]
 pub struct SSHUser {
     pub name: String,
     pub pubkey: String,
     pub access: String
+}
+impl Serialize for SSHUser {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+        let mut seq = serializer.serialize_seq(Some(4))?;
+
+        seq.serialize_element(&HashMap::from([
+            ("name", format!("Create user {}", self.name))
+        ]));
+        return seq.end()
+    }
 }
 
 pub struct SSHConfig {
@@ -19,6 +32,31 @@ impl SSHConfig {
     pub fn get_hosts(&self, user: &SSHUser) -> Vec<&str> {
         let sec = self.inv.get_by_path(&user.access).unwrap();
         return sec.descended_hosts()
+    }
+
+    /// Maps section paths to the set of users that can access.
+    fn get_section_users(&self) -> HashMap<&str, HashSet<&SSHUser>> {
+        let mut path_users = HashMap::new();
+        for user in &self.users {
+            let path = user.access.as_str();
+            if !path_users.contains_key(path) {
+                path_users.insert(path, HashSet::new());
+            }
+            path_users.get_mut(path).unwrap().insert(user);
+        }
+        todo!("Implement paths inheriting their parent's users.");
+        return path_users
+    }
+
+    /// Returns an ansible playbook that ratifies the settings in this sshconf.
+    pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
+        let mut outstr = String::new();
+        for (path, users) in self.get_section_users() {
+            for user in users {
+                outstr.push_str(&serde_yaml::to_string(user)?);
+            }
+        }
+        return Ok(outstr)
     }
 }
 
