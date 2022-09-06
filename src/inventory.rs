@@ -2,45 +2,14 @@ use crate::error::UndefinedSectionError;
 
 use std::collections::{HashMap, HashSet};
 
-pub trait SectionContainer<'a> {
-    /// Returns all the sections that exist directly within this one.
-    fn children(&'a self) -> Vec<&'a Section>;
-
-    /// Returns all the sections that are descended from this one.
-    fn descendants(&'a self) -> Vec<&'a Section> {
-        return self.children().iter().map(|sec| sec.descendants())
-        .flatten().collect()
-    }
-
-    /// Returns all hosts defined directly within this section. 
-    fn child_hosts(&'a self) -> Vec<&'a str>;
-
-    /// Returns all hosts descended from this one.
-    fn descended_hosts(&'a self) -> Vec<&'a str> {
-        return self.descendants().iter().map(|sec| sec.child_hosts())
-            .flatten().collect()
-    }
+#[derive(Debug)]
+pub struct Inventory {
+    /// Hostnames defined in the inventory outside of a section.
+    hosts: Vec<String>,
+    /// Top-level sections in the inventory.
+    sections: HashMap<String, Section>
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
-struct SectionOutline {
-    pub name: String,
-    pub path: String,
-    pub children: Vec<String>,
-    pub hosts: Vec<String>
-}
-impl SectionOutline {
-    pub fn new(path: String) -> SectionOutline {
-        let name: String;
-        if path.contains(':') {
-            name = path.rsplit_once(':').unwrap().1.to_string();
-        } else {
-            name = path.clone();
-        }
-        println!("OUTLINE-- name: {}; path: {};", &name, &path);
-        SectionOutline { name, path, children:  Vec::new(), hosts: Vec::new() } 
-    }
-}
 
 #[derive(Debug)]
 pub struct Section {
@@ -66,6 +35,27 @@ impl Section {
     }
 }
 
+
+pub trait SectionContainer<'a> {
+    /// Returns all the sections that exist directly within this one.
+    fn children(&'a self) -> Vec<&'a Section>;
+
+    /// Returns all the sections that are descended from this one.
+    fn descendants(&'a self) -> Vec<&'a Section> {
+        return self.children().iter().map(|sec| sec.descendants())
+        .flatten().collect()
+    }
+
+    /// Returns all hosts defined directly within this section. 
+    fn child_hosts(&'a self) -> Vec<&'a str>;
+
+    /// Returns all hosts descended from this one.
+    fn descended_hosts(&'a self) -> Vec<&'a str> {
+        return self.descendants().iter().map(|sec| sec.child_hosts())
+            .flatten().collect()
+    }
+}
+
 impl<'a> SectionContainer<'a> for Section {
     fn children(&'a self) -> Vec<&'a Section> {
         return self.children.values().collect()
@@ -76,14 +66,6 @@ impl<'a> SectionContainer<'a> for Section {
     }
 } 
 
-#[derive(Debug)]
-pub struct Inventory {
-    /// Hostnames defined in the inventory outside of a section.
-    hosts: Vec<String>,
-    /// Top-level sections in the inventory.
-    sections: HashMap<String, Section>
-}
-
 impl<'a> SectionContainer<'a> for Inventory {
     fn children(&'a self) -> Vec<&'a Section> {
         return self.sections.values().collect()
@@ -91,6 +73,29 @@ impl<'a> SectionContainer<'a> for Inventory {
 
     fn child_hosts(&'a self) -> Vec<&'a str> {
         return self.hosts.iter().map(|s| &**s).collect()
+    }
+}
+
+// Parsing
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+struct SectionOutline {
+    pub name: String,
+    pub path: String,
+    pub children: Vec<String>,
+    pub hosts: Vec<String>
+}
+
+impl SectionOutline {
+    pub fn new(path: String) -> SectionOutline {
+        let name: String;
+        if path.contains(':') {
+            name = path.rsplit_once(':').unwrap().1.to_string();
+        } else {
+            name = path.clone();
+        }
+        println!("OUTLINE-- name: {}; path: {};", &name, &path);
+        SectionOutline { name, path, children:  Vec::new(), hosts: Vec::new() } 
     }
 }
 
@@ -143,7 +148,8 @@ impl InventoryParser {
         return Ok(Inventory { hosts: self.hosts.clone(), sections })
     }
 
-    fn parse(&mut self) -> Result<Inventory, UndefinedSectionError> {
+    /// Stores the data parsed from an inventory file.
+    fn parse(&mut self) {
         let mut line_buf: &mut Vec<String> = &mut self.hosts;
         let mut last_path = "".to_string();
         for line in self.content.lines() {
@@ -183,21 +189,22 @@ impl InventoryParser {
                 line_buf.push(line.to_string());
             }
         }
-        return self.to_inv()
     }
 
     /// Returns a new inventory from a string.
     pub fn inv_from_string(content: String) -> Result<Inventory, UndefinedSectionError> {
-        return InventoryParser { content, 
+        let mut parser = InventoryParser { content, 
             outlines: HashMap::new(), 
             hosts: Vec::new(), 
             children: HashMap::new(), 
             children_def: false 
-        }.parse()
+        };
+        parser.parse();
+        return parser.to_inv()
     }
 }
 
-
+// Helpers
 
 trait Finder<T> {
     fn first_key_for(&self, val: &T) -> Option<&T>;
