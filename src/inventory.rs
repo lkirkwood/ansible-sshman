@@ -42,8 +42,11 @@ pub trait SectionContainer<'a> {
 
     /// Returns all the sections that are descended from this one.
     fn descendants(&'a self) -> Vec<&'a Section> {
-        return self.children().iter().map(|sec| sec.descendants())
-        .flatten().collect()
+        let mut children = self.children().clone();
+        for child in self.children() {
+            children.extend(child.descendants());
+        }
+        return children
     }
 
     /// Returns all hosts defined directly within this section. 
@@ -51,9 +54,16 @@ pub trait SectionContainer<'a> {
 
     /// Returns all hosts descended from this one.
     fn descended_hosts(&'a self) -> Vec<&'a str> {
-        return self.descendants().iter().map(|sec| sec.child_hosts())
-            .flatten().collect()
+        let mut hosts = self.child_hosts().clone();
+        for child in self.children() {
+            hosts.extend(child.descended_hosts());
+        }
+        return hosts
     }
+
+    /// Gets a section from its path relative to this object.
+    /// Wildcard ("*") indicates all sections.
+    fn get_by_path(&'a self, path: &str) -> Option<&'a dyn(SectionContainer)>;
 }
 
 impl<'a> SectionContainer<'a> for Section {
@@ -64,6 +74,22 @@ impl<'a> SectionContainer<'a> for Section {
     fn child_hosts(&'a self) -> Vec<&'a str> {
         return self.hosts.iter().map(|s| &**s).collect()
     }
+
+    fn get_by_path(&'a self, path: &str) -> Option<&'a dyn(SectionContainer)> {
+        if path == "*" {
+            return Some(self)
+        } else {
+            let mut section = self;
+            for name in path.split(':') {
+                if section.children.contains_key(name) {
+                    section = section.children.get(name).unwrap();
+                } else {
+                    return None
+                }
+            }
+            return Some(section)
+        }
+    }
 } 
 
 impl<'a> SectionContainer<'a> for Inventory {
@@ -73,6 +99,28 @@ impl<'a> SectionContainer<'a> for Inventory {
 
     fn child_hosts(&'a self) -> Vec<&'a str> {
         return self.hosts.iter().map(|s| &**s).collect()
+    }
+
+    fn get_by_path(&'a self, path: &str) -> Option<&'a dyn(SectionContainer)> {
+        if path == "*" {
+            return Some(self)
+        } else {
+            let names: Vec<&str> = path.split(':').collect();
+            let first = *names.first().unwrap();
+            if self.sections.contains_key(first) {
+                let mut section = self.sections.get(first).unwrap();
+                for name in &names[1..] {
+                    if section.children.contains_key(*name) {
+                        section = section.children.get(*name).unwrap();
+                    } else {
+                        return None
+                    }
+                }
+                return Some(section)
+            } else {
+                return None
+            }
+        }
     }
 }
 
@@ -94,7 +142,6 @@ impl SectionOutline {
         } else {
             name = path.clone();
         }
-        println!("OUTLINE-- name: {}; path: {};", &name, &path);
         SectionOutline { name, path, children:  Vec::new(), hosts: Vec::new() } 
     }
 }
@@ -175,7 +222,6 @@ impl InventoryParser {
                         None => name.clone(),
                         Some(s) => format!("{}:{}", s, name).to_string()
                 };
-                println!("name: {}; path: {}", &name, &path);
                 let outline = SectionOutline::new(path.clone());
                 self.outlines.insert(name.clone(), outline);
 
