@@ -188,10 +188,6 @@ impl InventoryParser {
             }
         }
 
-        if outline.path == "org_all" {
-            println!("outline children: {:?}", outline.children);
-            println!("real children: {:?}", section.children);
-        }
         section.hosts = outline.hosts.clone();
         return Ok(section);
     }
@@ -223,7 +219,6 @@ impl InventoryParser {
                 let mut name = line.trim()[1..line.len() - 1].to_string();
                 if self.children_def == true {
                     // leaving children def
-                    println!("{}: \n{:?}", last_path, line_buf.clone());
                     self.children.insert(last_path, line_buf.clone());
                     self.children_def = false;
                 }
