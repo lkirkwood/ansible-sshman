@@ -46,7 +46,7 @@ impl SSHConfig {
         for (group, users) in self.get_group_users() {
             let mut tasks = Vec::new();
             for user in users {
-                tasks.push(SSHTask::authorize_key {
+                tasks.push(SSHTask::AuthorizeKey {
                     name: user.name.clone(),
                     pubkey: user.pubkey.clone(),
                 })
@@ -74,13 +74,13 @@ impl SSHPlay {
         return SSHPlay {
             group: "*".to_string(),
             tasks: vec![
-                SSHTask::create_user {
+                SSHTask::CreateUser {
                     name: JUMP_USER_NAME.to_string(),
                 },
-                SSHTask::enable_sudo {
+                SSHTask::EnableSudo {
                     name: JUMP_USER_NAME.to_string(),
                 },
-                SSHTask::use_root_pw_sudo {
+                SSHTask::UseRootPWForSudo {
                     name: JUMP_USER_NAME.to_string(),
                 },
             ],
@@ -104,24 +104,24 @@ impl Serialize for SSHPlay {
 /// The various tasks needed to authorize a user on a node.
 enum SSHTask {
     /// Creates the user on the node.
-    create_user {
+    CreateUser {
         /// Name of user to create.
         name: String,
     },
     /// Authorizes a user's public key on a node.
-    authorize_key {
+    AuthorizeKey {
         /// Name of user to authorize.
         name: String,
         /// Public key of user to authorize.
         pubkey: String,
     },
     /// Enables sudo for a user on a node.
-    enable_sudo {
+    EnableSudo {
         /// Name of user to enable sudo for.
         name: String,
     },
     /// Sets sudo to use the root password.
-    use_root_pw_sudo {
+    UseRootPWForSudo {
         /// Name of user to use root pw with sudo for.
         name: String,
     },
@@ -131,18 +131,18 @@ impl SSHTask {
     /// Returns the task name.
     fn task_name(&self) -> String {
         match self {
-            Self::create_user { name } => format!("Create user {}", name),
-            Self::authorize_key { name, pubkey: _ } => format!("Authorize public key for {}", name),
-            Self::enable_sudo { name } => format!("Enable sudo for {}", name),
-            Self::use_root_pw_sudo { name } => format!("Use root password for sudo for {}", name),
+            Self::CreateUser { name } => format!("Create user {}", name),
+            Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
+            Self::EnableSudo { name } => format!("Enable sudo for {}", name),
+            Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
         }
     }
 
     /// Returns the name of the module used to perform this task.
     fn module_name(&self) -> &'static str {
         match self {
-            Self::create_user { name: _ } => return "ansible.builtin.user",
-            Self::authorize_key { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
+            Self::CreateUser { name: _ } => return "ansible.builtin.user",
+            Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             _ => return "ansible.builtin.lineinfile",
         }
     }
@@ -150,13 +150,13 @@ impl SSHTask {
     /// Returns a map of arguments that configure the module for this task.
     pub fn module_map(&self) -> HashMap<String, String> {
         match self {
-            Self::create_user { name } => {
+            Self::CreateUser { name } => {
                 return HashMap::from([
                     ("name".to_string(), name.clone()),
                     ("state".to_string(), "present".to_string()),
                 ])
             }
-            Self::authorize_key { name, pubkey } => {
+            Self::AuthorizeKey { name, pubkey } => {
                 return HashMap::from([
                     ("key".to_string(), pubkey.clone()),
                     ("comment".to_string(), format!("jump_user: {}", name)),
@@ -164,7 +164,7 @@ impl SSHTask {
                     ("manage_dir".to_string(), "true".to_string()),
                 ])
             }
-            Self::enable_sudo { name } => {
+            Self::EnableSudo { name } => {
                 return HashMap::from([
                     (
                         "path".to_string(),
@@ -175,7 +175,7 @@ impl SSHTask {
                     ("line".to_string(), format!("{} ALL = (ALL) ALL", name)),
                 ])
             }
-            Self::use_root_pw_sudo { name } => {
+            Self::UseRootPWForSudo { name } => {
                 return HashMap::from([
                     (
                         "path".to_string(),
