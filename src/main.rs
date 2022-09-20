@@ -23,4 +23,5 @@ fn main() {
     let conf = config::SSHConfig::from_str(&conf_content).unwrap();
 
     println!("{}", conf.playbook().unwrap());
+    todo!("Removed jump authorized keys before rebuilding file.")
 }
