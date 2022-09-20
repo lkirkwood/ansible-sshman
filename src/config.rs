@@ -4,6 +4,8 @@ use std::{
     error::Error,
 };
 
+const JUMP_USER_NAME: &'static str = "jump";
+
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct SSHUser {
     pub name: String,
@@ -39,35 +41,54 @@ impl SSHConfig {
     /// Returns an ansible playbook that applies the settings in this sshconf.
     pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
         let mut plays = Vec::new();
+        plays.push(SSHPlay::setup_play());
+
         for (group, users) in self.get_group_users() {
+            let mut tasks = Vec::new();
+            for user in users {
+                tasks.push(SSHTask::authorize_key {
+                    name: user.name.clone(),
+                    pubkey: user.pubkey.clone(),
+                })
+            }
+
             plays.push(SSHPlay {
                 group: group.to_string(),
-                users,
+                tasks,
             });
         }
         return Ok(serde_yaml::to_string(&plays)?);
     }
 }
 
-/// Models a play that authorizes some users for a group.
-struct SSHPlay<'a> {
+/// Models an ansible play.
+struct SSHPlay {
     /// Path of the group of hosts this play targets.
     group: String,
-    /// Maps usernames to public keys
-    users: HashSet<&'a SSHUser>,
+    /// The tasks in this play.
+    tasks: Vec<SSHTask>,
 }
 
-impl<'a> SSHPlay<'a> {
-    pub fn tasks(&self) -> Vec<SSHTask> {
-        let mut tasks = Vec::new();
-        for user in &self.users {
-            tasks.extend(SSHTask::tasks_for_user(*user))
-        }
-        return tasks;
+impl SSHPlay {
+    fn setup_play() -> SSHPlay {
+        return SSHPlay {
+            group: "*".to_string(),
+            tasks: vec![
+                SSHTask::create_user {
+                    name: JUMP_USER_NAME.to_string(),
+                },
+                SSHTask::enable_sudo {
+                    name: JUMP_USER_NAME.to_string(),
+                },
+                SSHTask::use_root_pw_sudo {
+                    name: JUMP_USER_NAME.to_string(),
+                },
+            ],
+        };
     }
 }
 
-impl<'a> Serialize for SSHPlay<'a> {
+impl Serialize for SSHPlay {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -75,7 +96,7 @@ impl<'a> Serialize for SSHPlay<'a> {
         let mut play = serializer.serialize_map(Some(3))?;
         play.serialize_entry("name", &format!("Set SSH users for {}", &self.group))?;
         play.serialize_entry("hosts", &self.group)?;
-        play.serialize_entry("tasks", &self.tasks())?;
+        play.serialize_entry("tasks", &self.tasks)?;
         return play.end();
     }
 }
@@ -107,30 +128,11 @@ enum SSHTask {
 }
 
 impl SSHTask {
-    /// Generates the tasks needed to authorize a user on a node.
-    pub fn tasks_for_user(user: &SSHUser) -> Vec<Self> {
-        return vec![
-            Self::create_user {
-                name: user.name.clone(),
-            },
-            Self::authorize_key {
-                name: user.name.clone(),
-                pubkey: user.pubkey.clone(),
-            },
-            Self::enable_sudo {
-                name: user.name.clone(),
-            },
-            Self::use_root_pw_sudo {
-                name: user.name.clone(),
-            },
-        ];
-    }
-
     /// Returns the task name.
     fn task_name(&self) -> String {
         match self {
             Self::create_user { name } => format!("Create user {}", name),
-            Self::authorize_key { name, pubkey } => format!("Authorize public key for {}", name),
+            Self::authorize_key { name, pubkey: _ } => format!("Authorize public key for {}", name),
             Self::enable_sudo { name } => format!("Enable sudo for {}", name),
             Self::use_root_pw_sudo { name } => format!("Use root password for sudo for {}", name),
         }
@@ -139,8 +141,8 @@ impl SSHTask {
     /// Returns the name of the module used to perform this task.
     fn module_name(&self) -> &'static str {
         match self {
-            Self::create_user { name } => return "ansible.builtin.user",
-            Self::authorize_key { name, pubkey } => return "ansible.posix.authorized_key",
+            Self::create_user { name: _ } => return "ansible.builtin.user",
+            Self::authorize_key { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             _ => return "ansible.builtin.lineinfile",
         }
     }
@@ -157,7 +159,8 @@ impl SSHTask {
             Self::authorize_key { name, pubkey } => {
                 return HashMap::from([
                     ("key".to_string(), pubkey.clone()),
-                    ("user".to_string(), name.clone()),
+                    ("comment".to_string(), format!("jump_user: {}", name)),
+                    ("user".to_string(), JUMP_USER_NAME.to_string()),
                     ("manage_dir".to_string(), "true".to_string()),
                 ])
             }
