@@ -40,6 +40,11 @@ impl Group {
 }
 
 pub trait GroupContainer<'a> {
+    fn path(&self) -> &str;
+
+    fn contains(&self, container: &(dyn GroupContainer)) -> bool {
+        return self.path().contains(container.path());
+    }
     /// Returns all the groups that exist directly within this one.
     fn children(&'a self) -> Vec<&'a Group>;
 
@@ -70,6 +75,10 @@ pub trait GroupContainer<'a> {
 }
 
 impl<'a> GroupContainer<'a> for Group {
+    fn path(&self) -> &str {
+        return &self.path;
+    }
+
     fn children(&'a self) -> Vec<&'a Group> {
         return self.children.values().collect();
     }
@@ -96,6 +105,10 @@ impl<'a> GroupContainer<'a> for Group {
 }
 
 impl<'a> GroupContainer<'a> for Inventory {
+    fn path(&self) -> &str {
+        return "*";
+    }
+
     fn children(&'a self) -> Vec<&'a Group> {
         return self.groups.values().collect();
     }
