@@ -21,6 +21,9 @@ impl SSHPlay {
                 SSHTask::CreateUser {
                     name: JUMP_USER_NAME.to_string(),
                 },
+                SSHTask::DeleteFile {
+                    path: format!("/home/{}/.ssh/authorized_keys", JUMP_USER_NAME),
+                },
                 SSHTask::EnableSudo {
                     name: JUMP_USER_NAME.to_string(),
                 },
@@ -47,6 +50,8 @@ impl Serialize for SSHPlay {
 
 /// The various tasks needed to authorize a user on a node.
 pub enum SSHTask {
+    /// Deletes a file on the node.
+    DeleteFile { path: String },
     /// Creates the user on the node.
     CreateUser {
         /// Name of user to create.
@@ -76,6 +81,12 @@ impl SSHTask {
     fn task_name(&self) -> String {
         match self {
             Self::CreateUser { name } => format!("Create user {}", name),
+            Self::DeleteFile { path } => {
+                format!(
+                    "Delete file {}",
+                    path.rsplit_once('/').unwrap_or(("", path)).1
+                )
+            }
             Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
@@ -85,6 +96,7 @@ impl SSHTask {
     /// Returns the name of the module used to perform this task.
     fn module_name(&self) -> &'static str {
         match self {
+            Self::DeleteFile { path: _ } => return "ansible.builtin.file",
             Self::CreateUser { name: _ } => return "ansible.builtin.user",
             Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             _ => return "ansible.builtin.lineinfile",
@@ -94,6 +106,12 @@ impl SSHTask {
     /// Returns a map of arguments that configure the module for this task.
     pub fn module_map(&self) -> HashMap<String, String> {
         match self {
+            Self::DeleteFile { path } => {
+                return HashMap::from([
+                    ("path".to_string(), path.clone()),
+                    ("state".to_string(), "absent".to_string()),
+                ])
+            }
             Self::CreateUser { name } => {
                 return HashMap::from([
                     ("name".to_string(), name.clone()),
