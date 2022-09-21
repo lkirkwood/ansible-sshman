@@ -6,15 +6,15 @@ use serde::Serialize;
 const JUMP_USER_NAME: &'static str = "jump";
 
 /// Models an ansible play.
-struct SSHPlay {
+pub struct SSHPlay {
     /// Path of the group of hosts this play targets.
-    group: String,
+    pub group: String,
     /// The tasks in this play.
-    tasks: Vec<SSHTask>,
+    pub tasks: Vec<SSHTask>,
 }
 
 impl SSHPlay {
-    fn setup_play() -> SSHPlay {
+    pub fn setup_play() -> SSHPlay {
         return SSHPlay {
             group: "*".to_string(),
             tasks: vec![
@@ -46,7 +46,7 @@ impl Serialize for SSHPlay {
 }
 
 /// The various tasks needed to authorize a user on a node.
-enum SSHTask {
+pub enum SSHTask {
     /// Creates the user on the node.
     CreateUser {
         /// Name of user to create.
