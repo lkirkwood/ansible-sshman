@@ -1,5 +1,6 @@
 mod config;
 mod error;
+mod model;
 
 use std::fs;
 
