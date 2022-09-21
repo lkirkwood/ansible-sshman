@@ -243,6 +243,7 @@ impl SSHTask {
         }
     }
 
+    /// Returns a vector of tasks to be used when setting up a new user.
     pub fn user_tasks(user: &SSHUser) -> Vec<Self> {
         let mut tasks = vec![
             Self::CreateUser {

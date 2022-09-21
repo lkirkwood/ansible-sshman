@@ -6,6 +6,7 @@ use std::{
 
 use crate::model::{SSHPlay, SSHTask, JUMP_USER_FILE};
 
+/// Models a user in the config file.
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct SSHUser {
     pub name: String,
@@ -14,7 +15,9 @@ pub struct SSHUser {
     pub sudoer: bool,
 }
 
+/// Models a config file.
 pub struct SSHConfig {
+    /// The users defined in the config file.
     pub users: Vec<SSHUser>,
 }
 
