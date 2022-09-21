@@ -4,13 +4,14 @@ use std::{
     error::Error,
 };
 
-use crate::model::{SSHPlay, SSHTask};
+use crate::model::{SSHPlay, SSHTask, JUMP_USER_FILE};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct SSHUser {
     pub name: String,
     pub pubkey: String,
     pub access: String,
+    pub sudoer: bool,
 }
 
 pub struct SSHConfig {
@@ -41,22 +42,42 @@ impl SSHConfig {
     /// Returns an ansible playbook that applies the settings in this sshconf.
     pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
         let mut plays = Vec::new();
-        plays.push(SSHPlay::setup_play());
+        let mut groups = HashSet::new();
+        let mut user_names = HashSet::new();
 
+        let mut usr_plays = Vec::new();
         for (group, users) in self.get_group_users() {
+            groups.insert(group.clone());
+            user_names.extend::<Vec<String>>(users.iter().map(|usr| usr.name.clone()).collect());
+
             let mut tasks = Vec::new();
             for user in users {
-                tasks.push(SSHTask::AuthorizeKey {
-                    name: user.name.clone(),
-                    pubkey: user.pubkey.clone(),
-                })
+                tasks.extend(SSHTask::user_tasks(user));
             }
-
-            plays.push(SSHPlay {
+            usr_plays.push(SSHPlay {
                 group: group.to_string(),
+                vars: HashMap::new(),
                 tasks,
             });
         }
+
+        for group in &groups {
+            plays.push(SSHPlay::prune_jump_users(
+                group.to_string(),
+                user_names.clone(),
+            ));
+        }
+
+        // Insert
+        plays.push(SSHPlay {
+            group: groups.into_iter().collect::<Vec<&str>>().join(":"),
+            vars: HashMap::new(),
+            tasks: vec![SSHTask::DeleteFile {
+                path: JUMP_USER_FILE.to_string(),
+            }],
+        });
+
+        plays.extend(usr_plays);
         return Ok(serde_yaml::to_string(&plays)?);
     }
 }
