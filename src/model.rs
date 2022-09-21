@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use serde::ser::SerializeMap;
+use serde::ser::{SerializeMap, SerializeSeq};
 use serde::Serialize;
 
 use crate::config::SSHUser;
@@ -17,7 +17,29 @@ pub struct SSHPlay {
     pub tasks: Vec<SSHTask>,
 }
 
-impl SSHPlay {}
+impl SSHPlay {
+    /// Convenience function returning a play that prunes users not included in the set.
+    pub fn prune_jump_users(group: String, users: HashSet<String>) -> SSHPlay {
+        let desired_var = "jump_users";
+        let vars = HashMap::from([(
+            desired_var.to_string(),
+            SSHPlayVars::List(users.into_iter().collect()),
+        )]);
+
+        let found_var = "found_users";
+        let tasks = vec![
+            SSHTask::ReadFile {
+                path: JUMP_USER_FILE.to_string(),
+                var_name: found_var.to_string(),
+            },
+            SSHTask::DeleteJumpUsers {
+                found_var: format!("{}.stdout_lines", found_var),
+                desired_var: desired_var.to_string(),
+            },
+        ];
+        return SSHPlay { group, vars, tasks };
+    }
+}
 
 impl Serialize for SSHPlay {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -34,17 +56,43 @@ impl Serialize for SSHPlay {
 }
 
 /// Models the possible types of vars to include in a play.
-#[derive(Serialize)]
 pub enum SSHPlayVars {
     String(String),
     List(Vec<String>),
     Dict(HashMap<String, String>),
 }
 
+impl Serialize for SSHPlayVars {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::String(string) => serializer.serialize_str(string.as_str()),
+            Self::List(vec) => {
+                let mut seq = serializer.serialize_seq(Some(vec.len()))?;
+                for i in vec {
+                    seq.serialize_element(i)?;
+                }
+                seq.end()
+            }
+            Self::Dict(hmap) => {
+                let mut map = serializer.serialize_map(Some(hmap.len()))?;
+                for (k, v) in hmap {
+                    map.serialize_entry(k, v)?;
+                }
+                map.end()
+            }
+        }
+    }
+}
+
 /// The various tasks needed to authorize a user on a node.
 pub enum SSHTask {
     /// Deletes a file on the node.
     DeleteFile { path: String },
+    /// Reads lines from a file and registers them to the var name.
+    ReadFile { path: String, var_name: String },
     /// Creates the user on the node.
     CreateUser {
         /// Name of user to create.
@@ -54,6 +102,13 @@ pub enum SSHTask {
     RecordJumpUser {
         /// Name of user to record as jump user.
         name: String,
+    },
+    /// Iterates over a var
+    DeleteJumpUsers {
+        /// Var name to read found jump user names from.
+        found_var: String,
+        /// Var name to read desired jump user names from.
+        desired_var: String,
     },
     /// Authorizes a user's public key on a node.
     AuthorizeKey {
@@ -84,8 +139,17 @@ impl SSHTask {
                     path.rsplit_once('/').unwrap_or(("", path)).1
                 )
             }
+            Self::ReadFile { path, var_name } => format!(
+                "Read lines of {} into {}",
+                path.rsplit_once('/').unwrap_or(("", path)).1,
+                var_name
+            ),
             Self::CreateUser { name } => format!("Create user {}", name),
             Self::RecordJumpUser { name } => format!("Record jump user {}", name),
+            Self::DeleteJumpUsers {
+                found_var,
+                desired_var: _,
+            } => format!("Deleting users from ${}", found_var),
             Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
@@ -96,7 +160,15 @@ impl SSHTask {
     fn module_name(&self) -> &'static str {
         match self {
             Self::DeleteFile { path: _ } => return "ansible.builtin.file",
-            Self::CreateUser { name: _ } => return "ansible.builtin.user",
+            Self::ReadFile {
+                path: _,
+                var_name: _,
+            } => return "ansible.builtin.command",
+            Self::CreateUser { name: _ }
+            | Self::DeleteJumpUsers {
+                found_var: _,
+                desired_var: _,
+            } => return "ansible.builtin.user",
             Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             _ => return "ansible.builtin.lineinfile",
         }
@@ -111,6 +183,9 @@ impl SSHTask {
                     ("state".to_string(), "absent".to_string()),
                 ])
             }
+            Self::ReadFile { path, var_name: _ } => {
+                return HashMap::from([("cmd".to_string(), format!("cat {}", path))])
+            }
             Self::CreateUser { name } => {
                 return HashMap::from([
                     ("name".to_string(), name.clone()),
@@ -123,6 +198,16 @@ impl SSHTask {
                     ("state".to_string(), "present".to_string()),
                     ("create".to_string(), "yes".to_string()),
                     ("line".to_string(), name.clone()),
+                ])
+            }
+            Self::DeleteJumpUsers {
+                found_var: _,
+                desired_var: _,
+            } => {
+                return HashMap::from([
+                    ("name".to_string(), "{{ item }}".to_string()),
+                    ("state".to_string(), "absent".to_string()),
+                    ("remove".to_string(), "yes".to_string()),
                 ])
             }
             Self::AuthorizeKey { name, pubkey } => {
@@ -192,6 +277,19 @@ impl Serialize for SSHTask {
         task.serialize_entry("name", &self.task_name())?;
         task.serialize_entry("become", &true)?;
         task.serialize_entry(self.module_name(), &self.module_map())?;
+        match self {
+            Self::ReadFile { path: _, var_name } => {
+                task.serialize_entry("register", var_name)?;
+            }
+            Self::DeleteJumpUsers {
+                found_var,
+                desired_var,
+            } => {
+                task.serialize_entry("loop", &format!("{{{{ {} }}}}", found_var))?;
+                task.serialize_entry("when", &format!("item not in {}", desired_var))?;
+            }
+            _ => {}
+        }
         return task.end();
     }
 }
