@@ -11,6 +11,8 @@ pub const JUMP_USER_FILE: &'static str = "/home/ansible/.ssh/jump_users";
 pub struct SSHPlay {
     /// Path of the group of hosts this play targets.
     pub group: String,
+    /// Vars to include with the play.
+    pub vars: HashMap<String, SSHPlayVars>,
     /// The tasks in this play.
     pub tasks: Vec<SSHTask>,
 }
@@ -25,9 +27,18 @@ impl Serialize for SSHPlay {
         let mut play = serializer.serialize_map(Some(3))?;
         play.serialize_entry("name", &format!("Set SSH users for {}", &self.group))?;
         play.serialize_entry("hosts", &self.group)?;
+        play.serialize_entry("vars", &self.vars)?;
         play.serialize_entry("tasks", &self.tasks)?;
         return play.end();
     }
+}
+
+/// Models the possible types of vars to include in a play.
+#[derive(Serialize)]
+pub enum SSHPlayVars {
+    String(String),
+    List(Vec<String>),
+    Dict(HashMap<String, String>),
 }
 
 /// The various tasks needed to authorize a user on a node.
