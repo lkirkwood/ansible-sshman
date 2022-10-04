@@ -19,13 +19,7 @@ pub struct SSHPlay {
 
 impl SSHPlay {
     /// Convenience function returning a play that prunes users not included in the set.
-    pub fn prune_jump_users(group: String, users: HashSet<String>) -> SSHPlay {
-        let desired_var = "jump_users";
-        let vars = HashMap::from([(
-            desired_var.to_string(),
-            SSHPlayVars::List(users.into_iter().collect()),
-        )]);
-
+    pub fn prune_jump_users() -> SSHPlay {
         let found_var = "found_users";
         let tasks = vec![
             SSHTask::ReadFile {
@@ -34,10 +28,24 @@ impl SSHPlay {
             },
             SSHTask::DeleteJumpUsers {
                 found_var: format!("{}.stdout_lines", found_var),
-                desired_var: desired_var.to_string(),
             },
         ];
-        return SSHPlay { group, vars, tasks };
+        return SSHPlay {
+            group: "*".to_string(),
+            vars,
+            tasks,
+        };
+    }
+
+    /// Convenience function returning a play that deletes the file recording jump users.
+    pub fn delete_jump_user_file() -> SSHPlay {
+        SSHPlay {
+            group: "*".to_string(),
+            vars: HashMap::new(),
+            tasks: vec![SSHTask::DeleteFile {
+                path: JUMP_USER_FILE.to_string(),
+            }],
+        }
     }
 }
 
@@ -105,12 +113,10 @@ pub enum SSHTask {
         /// Name of user to record as jump user.
         name: String,
     },
-    /// Deletes jump users from found_var not present in desired_var.
+    /// Deletes all jump users in found_var.
     DeleteJumpUsers {
         /// Var name to read found jump user names from.
         found_var: String,
-        /// Var name to read desired jump user names from.
-        desired_var: String,
     },
     /// Authorizes a user's public key on a node.
     AuthorizeKey {
@@ -148,10 +154,7 @@ impl SSHTask {
             ),
             Self::CreateUser { name } => format!("Create user {}", name),
             Self::RecordJumpUser { name } => format!("Record jump user {}", name),
-            Self::DeleteJumpUsers {
-                found_var,
-                desired_var: _,
-            } => format!("Deleting users from ${}", found_var),
+            Self::DeleteJumpUsers { found_var } => format!("Deleting users from ${}", found_var),
             Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
@@ -166,11 +169,9 @@ impl SSHTask {
                 path: _,
                 var_name: _,
             } => return "ansible.builtin.shell",
-            Self::CreateUser { name: _ }
-            | Self::DeleteJumpUsers {
-                found_var: _,
-                desired_var: _,
-            } => return "ansible.builtin.user",
+            Self::CreateUser { name: _ } | Self::DeleteJumpUsers { found_var: _ } => {
+                return "ansible.builtin.user"
+            }
             Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             _ => return "ansible.builtin.lineinfile",
         }
@@ -205,10 +206,7 @@ impl SSHTask {
                     ("line".to_string(), name.clone()),
                 ])
             }
-            Self::DeleteJumpUsers {
-                found_var: _,
-                desired_var: _,
-            } => {
+            Self::DeleteJumpUsers { found_var: _ } => {
                 return HashMap::from([
                     ("name".to_string(), "{{ item }}".to_string()),
                     ("state".to_string(), "absent".to_string()),
@@ -286,12 +284,8 @@ impl Serialize for SSHTask {
             Self::ReadFile { path: _, var_name } => {
                 task.serialize_entry("register", var_name)?;
             }
-            Self::DeleteJumpUsers {
-                found_var,
-                desired_var,
-            } => {
+            Self::DeleteJumpUsers { found_var } => {
                 task.serialize_entry("loop", &format!("{{{{ {} }}}}", found_var))?;
-                task.serialize_entry("when", &format!("item not in {}", desired_var))?;
             }
             _ => {}
         }
