@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::Serialize;
@@ -32,7 +32,7 @@ impl SSHPlay {
         ];
         return SSHPlay {
             group: "*".to_string(),
-            vars,
+            vars: HashMap::new(),
             tasks,
         };
     }

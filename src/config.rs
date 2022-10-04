@@ -4,7 +4,7 @@ use std::{
     error::Error,
 };
 
-use crate::model::{SSHPlay, SSHTask, JUMP_USER_FILE};
+use crate::model::{SSHPlay, SSHTask};
 
 /// Models a user in the config file.
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
