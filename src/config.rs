@@ -45,7 +45,7 @@ impl SSHConfig {
     /// Returns an ansible playbook that applies the settings in this sshconf.
     pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
         let mut plays = vec![
-            SSHPlay::prune_jump_users(),
+            SSHPlay::delete_jump_users(),
             SSHPlay::delete_jump_user_file(),
         ];
         let mut groups = HashSet::new();
@@ -55,6 +55,7 @@ impl SSHConfig {
             groups.insert(group.clone());
 
             usr_plays.push(SSHPlay {
+                name: format!("Add jump users for {}", group),
                 group: group.to_string(),
                 vars: HashMap::new(),
                 tasks: users
