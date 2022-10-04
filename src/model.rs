@@ -92,7 +92,9 @@ pub enum SSHTask {
     /// Deletes a file on the node.
     DeleteFile { path: String },
     /// Reads lines from a file and registers them to the var name.
+    /// If file does not exist no error is thrown, var is simply and empty list.
     ReadFile { path: String, var_name: String },
+
     /// Creates the user on the node.
     CreateUser {
         /// Name of user to create.
@@ -103,7 +105,7 @@ pub enum SSHTask {
         /// Name of user to record as jump user.
         name: String,
     },
-    /// Iterates over a var
+    /// Deletes jump users from found_var not present in desired_var.
     DeleteJumpUsers {
         /// Var name to read found jump user names from.
         found_var: String,
@@ -163,7 +165,7 @@ impl SSHTask {
             Self::ReadFile {
                 path: _,
                 var_name: _,
-            } => return "ansible.builtin.command",
+            } => return "ansible.builtin.shell",
             Self::CreateUser { name: _ }
             | Self::DeleteJumpUsers {
                 found_var: _,
@@ -184,7 +186,10 @@ impl SSHTask {
                 ])
             }
             Self::ReadFile { path, var_name: _ } => {
-                return HashMap::from([("cmd".to_string(), format!("cat {}", path))])
+                return HashMap::from([(
+                    "cmd".to_string(),
+                    format!("[ ! -f {} ] || cat {}", path, path),
+                )])
             }
             Self::CreateUser { name } => {
                 return HashMap::from([
@@ -207,7 +212,6 @@ impl SSHTask {
                 return HashMap::from([
                     ("name".to_string(), "{{ item }}".to_string()),
                     ("state".to_string(), "absent".to_string()),
-                    ("remove".to_string(), "yes".to_string()),
                 ])
             }
             Self::AuthorizeKey { name, pubkey } => {
