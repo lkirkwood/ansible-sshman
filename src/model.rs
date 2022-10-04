@@ -9,6 +9,8 @@ pub const JUMP_USER_FILE: &'static str = "/home/ansible/.ssh/jump_users";
 
 /// Models an ansible play.
 pub struct SSHPlay {
+    /// Name of the play.
+    pub name: String,
     /// Path of the group of hosts this play targets.
     pub group: String,
     /// Vars to include with the play.
@@ -18,8 +20,8 @@ pub struct SSHPlay {
 }
 
 impl SSHPlay {
-    /// Convenience function returning a play that prunes users not included in the set.
-    pub fn prune_jump_users() -> SSHPlay {
+    /// Convenience function returning a play that deletes all jump users.
+    pub fn delete_jump_users() -> SSHPlay {
         let found_var = "found_users";
         let tasks = vec![
             SSHTask::ReadFile {
@@ -31,6 +33,7 @@ impl SSHPlay {
             },
         ];
         return SSHPlay {
+            name: "Removing all jump users".to_string(),
             group: "*".to_string(),
             vars: HashMap::new(),
             tasks,
@@ -40,6 +43,7 @@ impl SSHPlay {
     /// Convenience function returning a play that deletes the file recording jump users.
     pub fn delete_jump_user_file() -> SSHPlay {
         SSHPlay {
+            name: "Removing jump user record file.".to_string(),
             group: "*".to_string(),
             vars: HashMap::new(),
             tasks: vec![SSHTask::DeleteFile {
@@ -55,7 +59,7 @@ impl Serialize for SSHPlay {
         S: serde::Serializer,
     {
         let mut play = serializer.serialize_map(Some(3))?;
-        play.serialize_entry("name", &format!("Set SSH users for {}", &self.group))?;
+        play.serialize_entry("name", &self.name)?;
         play.serialize_entry("hosts", &self.group)?;
         play.serialize_entry("vars", &self.vars)?;
         play.serialize_entry("tasks", &self.tasks)?;
