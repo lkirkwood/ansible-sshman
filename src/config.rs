@@ -44,41 +44,25 @@ impl SSHConfig {
 
     /// Returns an ansible playbook that applies the settings in this sshconf.
     pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
-        let mut plays = Vec::new();
+        let mut plays = vec![
+            SSHPlay::prune_jump_users(),
+            SSHPlay::delete_jump_user_file(),
+        ];
         let mut groups = HashSet::new();
-        let mut user_names = HashSet::new();
 
-        let mut usr_plays = Vec::new();
+        let mut usr_plays = Vec::new(); // plays that add users
         for (group, users) in self.get_group_users() {
             groups.insert(group.clone());
-            user_names.extend::<Vec<String>>(users.iter().map(|usr| usr.name.clone()).collect());
 
-            let mut tasks = Vec::new();
-            for user in users {
-                tasks.extend(SSHTask::user_tasks(user));
-            }
             usr_plays.push(SSHPlay {
                 group: group.to_string(),
                 vars: HashMap::new(),
-                tasks,
+                tasks: users
+                    .iter()
+                    .flat_map(|usr| SSHTask::user_tasks(*usr))
+                    .collect(),
             });
         }
-
-        for group in &groups {
-            plays.push(SSHPlay::prune_jump_users(
-                group.to_string(),
-                user_names.clone(),
-            ));
-        }
-
-        // Insert
-        plays.push(SSHPlay {
-            group: groups.into_iter().collect::<Vec<&str>>().join(":"),
-            vars: HashMap::new(),
-            tasks: vec![SSHTask::DeleteFile {
-                path: JUMP_USER_FILE.to_string(),
-            }],
-        });
 
         plays.extend(usr_plays);
         return Ok(serde_yaml::to_string(&plays)?);
