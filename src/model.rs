@@ -315,6 +315,7 @@ impl Serialize for SSHTask {
             }
             Self::DeleteJumpUsers { found_var } => {
                 task.serialize_entry("loop", &format!("{{{{ {} }}}}", found_var))?;
+                task.serialize_entry("ignore_errors", &true)?;
             }
             _ => {}
         }
