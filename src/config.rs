@@ -10,7 +10,7 @@ use crate::model::{SSHPlay, SSHTask};
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct SSHUser {
     pub name: String,
-    pub pubkey: String,
+    pub pubkeys: Vec<String>,
     pub access: String,
     pub sudoer: bool,
 }

@@ -279,15 +279,17 @@ impl SSHTask {
             Self::RecordJumpUser {
                 name: user.name.clone(),
             },
-            Self::AuthorizeKey {
-                name: user.name.clone(),
-                pubkey: user.pubkey.clone(),
-            },
-            Self::ChownDir {
-                path: format!("/home/{}/", user.name.clone()),
-                owner: user.name.clone(),
-            },
         ];
+        for pubkey in &user.pubkeys {
+            tasks.push(Self::AuthorizeKey {
+                name: user.name.clone(),
+                pubkey: pubkey.to_owned(),
+            })
+        }
+        tasks.push(Self::ChownDir {
+            path: format!("/home/{}/", user.name.clone()),
+            owner: user.name.clone(),
+        });
         if user.sudoer == true {
             tasks.push(Self::EnableSudo {
                 name: user.name.clone(),
