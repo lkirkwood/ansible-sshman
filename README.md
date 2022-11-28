@@ -10,7 +10,7 @@ Also keeps track of accounts it has created, and disables them if they have been
 
 ## Config format
 
-```
+```yaml
 - name: Username of user
   pubkeys:
     - Array of
