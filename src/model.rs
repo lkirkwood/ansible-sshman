@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::Serialize;
@@ -210,17 +210,17 @@ impl SSHTask {
                 )])
             }
             Self::ChownDir { path, owner, group } => {
-                let owner_str: String;
-                if group.is_none() {
-                    owner_str = format!("{owner}:{owner}");
-                } else {
-                    owner_str = format!("{owner}:{}", group.as_ref().unwrap());
-                }
-                return HashMap::from([
+                let mut outmap = HashMap::from([
                     ("path".to_string(), path.clone()),
-                    ("owner".to_string(), owner_str),
+                    ("owner".to_string(), owner.clone()),
                     ("recurse".to_string(), "yes".to_string()),
                 ]);
+                if group.is_some() {
+                    outmap.insert("group".to_string(), group.as_ref().unwrap().to_string());
+                } else {
+                    outmap.insert("group".to_string(), owner.clone());
+                }
+                return outmap;
             }
             Self::CreateUser { name } => {
                 return HashMap::from([
