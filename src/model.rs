@@ -102,18 +102,14 @@ impl Serialize for SSHPlayVars {
 /// The various tasks needed to authorize a user on a node.
 pub enum SSHTask {
     /// Deletes a file on the node.
-    DeleteFile {
-        path: String,
-    },
+    DeleteFile { path: String },
     /// Reads lines from a file and registers them to the var name.
     /// If file does not exist no error is thrown, var is simply and empty list.
-    ReadFile {
-        path: String,
-        var_name: String,
-    },
+    ReadFile { path: String, var_name: String },
     ChownDir {
         path: String,
         owner: String,
+        group: Option<String>,
     },
 
     /// Creates the user on the node.
@@ -165,7 +161,7 @@ impl SSHTask {
                 path.rsplit_once('/').unwrap_or(("", path)).1,
                 var_name
             ),
-            Self::ChownDir { path, owner } => format!("Let {} own {}", owner, path),
+            Self::ChownDir { path, owner, group } => format!("Let {owner}:{group:?} own {path}"),
             Self::CreateUser { name } => format!("Create user {}", name),
             Self::RecordJumpUser { name } => format!("Record jump user {}", name),
             Self::DeleteJumpUsers { found_var } => format!("Deleting users from ${}", found_var),
@@ -178,9 +174,12 @@ impl SSHTask {
     /// Returns the name of the module used to perform this task.
     fn module_name(&self) -> &'static str {
         match self {
-            Self::DeleteFile { path: _ } | Self::ChownDir { path: _, owner: _ } => {
-                return "ansible.builtin.file"
-            }
+            Self::DeleteFile { path: _ }
+            | Self::ChownDir {
+                path: _,
+                owner: _,
+                group: _,
+            } => return "ansible.builtin.file",
             Self::ReadFile {
                 path: _,
                 var_name: _,
@@ -210,12 +209,18 @@ impl SSHTask {
                     format!("[ ! -f {} ] || cat {}", path, path),
                 )])
             }
-            Self::ChownDir { path, owner } => {
+            Self::ChownDir { path, owner, group } => {
+                let owner_str: String;
+                if group.is_none() {
+                    owner_str = format!("{owner}:{owner}");
+                } else {
+                    owner_str = format!("{owner}:{}", group.as_ref().unwrap());
+                }
                 return HashMap::from([
                     ("path".to_string(), path.clone()),
-                    ("owner".to_string(), owner.clone()),
+                    ("owner".to_string(), owner_str),
                     ("recurse".to_string(), "yes".to_string()),
-                ])
+                ]);
             }
             Self::CreateUser { name } => {
                 return HashMap::from([
@@ -289,6 +294,7 @@ impl SSHTask {
         tasks.push(Self::ChownDir {
             path: format!("/home/{}/", user.name.clone()),
             owner: user.name.clone(),
+            group: None,
         });
         if user.sudoer == true {
             tasks.push(Self::EnableSudo {
