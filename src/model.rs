@@ -20,22 +20,29 @@ pub struct SSHPlay {
 }
 
 impl SSHPlay {
-    /// Convenience function returning a play that deletes all jump users.
-    pub fn delete_jump_users() -> SSHPlay {
-        let found_var = "found_users";
+    /// Convenience function returning a play that removes old jump users.
+    pub fn prune_jump_users(allowed: HashSet<&SSHUser>) -> SSHPlay {
+        let found_var = "found_users".to_string();
+        let allowed_var = "allowed_users".to_string();
+
         let tasks = vec![
             SSHTask::ReadFile {
                 path: JUMP_USER_FILE.to_string(),
-                var_name: found_var.to_string(),
+                var_name: found_var.clone(),
             },
             SSHTask::DeleteJumpUsers {
-                found_var: format!("{}.stdout_lines", found_var),
+                found_var,
+                allowed_var,
             },
         ];
+
         return SSHPlay {
             name: "Removing all jump users".to_string(),
             group: "*".to_string(),
-            vars: HashMap::new(),
+            vars: HashMap::from([(
+                allowed_var.to_string(),
+                SSHPlayVars::List(allowed.iter().map(|usr| usr.name.clone()).collect()),
+            )]),
             tasks,
         };
     }
@@ -122,10 +129,12 @@ pub enum SSHTask {
         /// Name of user to record as jump user.
         name: String,
     },
-    /// Deletes all jump users in found_var.
+    /// Deletes all jump users in found_var that are not present in allowed_var.
     DeleteJumpUsers {
         /// Var name to read found jump user names from.
         found_var: String,
+        /// Var name to read allowed jump user names from.
+        allowed_var: String,
     },
     /// Authorizes a user's public key on a node.
     AuthorizeKey {
@@ -164,7 +173,10 @@ impl SSHTask {
             Self::ChownDir { path, owner, group } => format!("Let {owner}:{group:?} own {path}"),
             Self::CreateUser { name } => format!("Create user {}", name),
             Self::RecordJumpUser { name } => format!("Record jump user {}", name),
-            Self::DeleteJumpUsers { found_var } => format!("Deleting users from ${}", found_var),
+            Self::DeleteJumpUsers {
+                found_var,
+                allowed_var,
+            } => format!("Deleting users from ${found_var} not present in ${allowed_var}"),
             Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
@@ -184,9 +196,11 @@ impl SSHTask {
                 path: _,
                 var_name: _,
             } => return "ansible.builtin.shell",
-            Self::CreateUser { name: _ } | Self::DeleteJumpUsers { found_var: _ } => {
-                return "ansible.builtin.user"
-            }
+            Self::CreateUser { name: _ }
+            | Self::DeleteJumpUsers {
+                found_var: _,
+                allowed_var: _,
+            } => return "ansible.builtin.user",
             Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
             Self::RecordJumpUser { name: _ }
             | Self::EnableSudo { name: _ }
@@ -236,7 +250,10 @@ impl SSHTask {
                     ("line".to_string(), name.clone()),
                 ])
             }
-            Self::DeleteJumpUsers { found_var: _ } => {
+            Self::DeleteJumpUsers {
+                found_var: _,
+                allowed_var: _,
+            } => {
                 return HashMap::from([
                     ("name".to_string(), "{{ item }}".to_string()),
                     ("state".to_string(), "absent".to_string()),
@@ -321,8 +338,14 @@ impl Serialize for SSHTask {
             Self::ReadFile { path: _, var_name } => {
                 task.serialize_entry("register", var_name)?;
             }
-            Self::DeleteJumpUsers { found_var } => {
-                task.serialize_entry("loop", &format!("{{{{ {} }}}}", found_var))?;
+            Self::DeleteJumpUsers {
+                found_var,
+                allowed_var,
+            } => {
+                task.serialize_entry(
+                    "loop",
+                    &format!("{{{{ {found_var}.stdout_lines | difference({allowed_var}) }}}}"),
+                )?;
                 task.serialize_entry("ignore_errors", &true)?;
             }
             _ => {}
