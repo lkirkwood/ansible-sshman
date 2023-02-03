@@ -2,12 +2,14 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
+    hash::Hash,
+    iter::FromIterator,
 };
 
-use crate::model::{SSHPlay, SSHTask};
+use crate::{inventory::Inventory, model::SSHPlay};
 
 /// Models a user in the config file.
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
@@ -29,43 +31,34 @@ impl SSHConfig {
         });
     }
 
-    /// Maps group paths to the set of users that can access.
-    fn get_group_users(&self) -> HashMap<&str, HashSet<&SSHUser>> {
-        let mut path_users = HashMap::new();
+    /// Applies the config to the provided inventory.
+    pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
+        let mut host_users = HashMap::new();
         for user in &self.users {
-            let path = user.access.as_str();
-            if !path_users.contains_key(&path) {
-                path_users.insert(path, HashSet::new());
+            for host in inv.get_path_hosts(&user.access) {
+                if !host_users.contains_key(host) {
+                    host_users.insert(host, HashSet::new());
+                }
+                host_users.get_mut(host).unwrap().insert(user.name.clone());
             }
-            path_users.get_mut(&path).unwrap().insert(user);
-        }
-        return path_users;
-    }
-
-    /// Returns an ansible playbook that applies the settings in this sshconf.
-    pub fn playbook(&self) -> Result<String, Box<dyn Error>> {
-        let mut plays = vec![
-            SSHPlay::delete_jump_users(),
-            SSHPlay::delete_jump_user_file(),
-        ];
-        let mut groups = HashSet::new();
-
-        let mut usr_plays = Vec::new(); // plays that add users
-        for (group, users) in self.get_group_users() {
-            groups.insert(group.clone());
-
-            usr_plays.push(SSHPlay {
-                name: format!("Add jump users for {}", group),
-                group: group.to_string(),
-                vars: HashMap::new(),
-                tasks: users
-                    .iter()
-                    .flat_map(|usr| SSHTask::user_tasks(*usr))
-                    .collect(),
-            });
         }
 
-        plays.extend(usr_plays);
+        let mut user_hosts = HashMap::new();
+        for (host, users) in host_users {
+            let mut user_hash = Vec::from_iter(users);
+            user_hash.sort();
+            if !user_hosts.contains_key(&user_hash) {
+                user_hosts.insert(user_hash.clone(), Vec::new());
+            }
+            user_hosts.get_mut(&user_hash).unwrap().push(host);
+        }
+        println!("{user_hosts:#?}");
+
+        let mut plays = Vec::new();
+        for (users, hosts) in user_hosts {
+            plays.push(SSHPlay::prune_jump_users(hosts.join(":"), users))
+        }
+
         return Ok(serde_yaml::to_string(&plays)?);
     }
 }
