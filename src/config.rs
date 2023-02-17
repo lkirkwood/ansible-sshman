@@ -20,21 +20,25 @@ pub struct SSHUser {
 /// Models a config file.
 pub struct SSHConfig {
     /// The users defined in the config file.
-    pub users: Vec<SSHUser>,
+    pub users: HashMap<String, SSHUser>,
 }
 
 impl SSHConfig {
     /// Parses an SSHConfig from some yaml.
     pub fn from_str(content: &str) -> Result<SSHConfig, Box<dyn Error>> {
+        let list: Vec<SSHUser> = serde_yaml::from_str(content)?;
         return Ok(SSHConfig {
-            users: serde_yaml::from_str(content)?,
+            users: list
+                .into_iter()
+                .map(|usr| (usr.name.clone(), usr))
+                .collect(),
         });
     }
 
-    /// Applies the config to the provided inventory.
+    /// Returns a playbook that will apply this config to a given inventory.
     pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
         let mut host_users = HashMap::new();
-        for user in &self.users {
+        for (_, user) in &self.users {
             for host in inv.get_path_hosts(&user.access) {
                 if !host_users.contains_key(host) {
                     host_users.insert(host, HashSet::new());
@@ -52,11 +56,18 @@ impl SSHConfig {
             }
             user_hosts.get_mut(&user_hash).unwrap().push(host);
         }
-        println!("{user_hosts:#?}");
 
         let mut plays = Vec::new();
         for (users, hosts) in user_hosts {
-            plays.push(SSHPlay::prune_jump_users(hosts.join(":"), users))
+            let group = hosts.join(":");
+            plays.push(SSHPlay::set_jump_accounts(group.clone(), users.clone()));
+            plays.push(SSHPlay::set_jump_pubkeys(
+                group.clone(),
+                users
+                    .into_iter()
+                    .map(|name| self.users.get(&name).unwrap())
+                    .collect(),
+            ));
         }
 
         return Ok(serde_yaml::to_string(&plays)?);

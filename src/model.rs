@@ -65,7 +65,6 @@ impl SSHPlay {
             }
         }
 
-        println!("{tasks:?}");
         return SSHPlay {
             name: "Authenticating jump users".to_string(),
             group,
