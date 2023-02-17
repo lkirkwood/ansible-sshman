@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::Serialize;
@@ -8,6 +8,7 @@ use crate::config::SSHUser;
 pub const JUMP_USER_FILE: &'static str = "/home/ansible/.ssh/jump_users";
 
 /// Models an ansible play.
+#[derive(Debug)]
 pub struct SSHPlay {
     /// Name of the play.
     pub name: String,
@@ -20,29 +21,55 @@ pub struct SSHPlay {
 }
 
 impl SSHPlay {
-    /// Convenience function returning a play that removes old jump users.
-    pub fn prune_jump_users(allowed: HashSet<&SSHUser>) -> SSHPlay {
+    /// Convenience function returning a play that removes old jump users and adds new ones.
+    pub fn set_jump_accounts(group: String, allowed: Vec<String>) -> SSHPlay {
         let found_var = "found_users".to_string();
         let allowed_var = "allowed_users".to_string();
 
-        let tasks = vec![
-            SSHTask::ReadFile {
-                path: JUMP_USER_FILE.to_string(),
-                var_name: found_var.clone(),
-            },
-            SSHTask::DeleteJumpUsers {
-                found_var,
-                allowed_var,
-            },
-        ];
-
         return SSHPlay {
-            name: "Removing all jump users".to_string(),
-            group: "*".to_string(),
-            vars: HashMap::from([(
-                allowed_var.to_string(),
-                SSHPlayVars::List(allowed.iter().map(|usr| usr.name.clone()).collect()),
-            )]),
+            name: "Updating jump users".to_string(),
+            group,
+            vars: HashMap::from([(allowed_var.clone(), SSHPlayVars::List(allowed))]),
+            tasks: vec![
+                SSHTask::ReadFile {
+                    path: JUMP_USER_FILE.to_string(),
+                    var_name: found_var.clone(),
+                },
+                SSHTask::PruneJumpUsers {
+                    found_var: found_var.clone(),
+                    allowed_var: allowed_var.clone(),
+                },
+                SSHTask::AddJumpUsers {
+                    found_var,
+                    allowed_var,
+                },
+            ],
+        };
+    }
+
+    /// Convenience function returning a play that authenticates existing users.
+    pub fn set_jump_pubkeys(group: String, users: Vec<&SSHUser>) -> SSHPlay {
+        let mut tasks = Vec::new();
+        for user in users {
+            let keys = user.pubkeys.join("\n");
+            let keys_match = format!("{}_keysmatch", user.name);
+            tasks.push(SSHTask::SetJumpKeys {
+                user: user.name.clone(),
+                keys,
+            });
+
+            if user.sudoer == true {
+                tasks.push(SSHTask::EnableSudo {
+                    name: user.name.clone(),
+                });
+            }
+        }
+
+        println!("{tasks:?}");
+        return SSHPlay {
+            name: "Authenticating jump users".to_string(),
+            group,
+            vars: HashMap::new(),
             tasks,
         };
     }
@@ -53,9 +80,7 @@ impl SSHPlay {
             name: "Removing jump user record file.".to_string(),
             group: "*".to_string(),
             vars: HashMap::new(),
-            tasks: vec![SSHTask::DeleteFile {
-                path: JUMP_USER_FILE.to_string(),
-            }],
+            tasks: vec![],
         }
     }
 }
@@ -75,6 +100,7 @@ impl Serialize for SSHPlay {
 }
 
 /// Models the possible types of vars to include in a play.
+#[derive(Debug)]
 pub enum SSHPlayVars {
     String(String),
     List(Vec<String>),
@@ -107,6 +133,7 @@ impl Serialize for SSHPlayVars {
 }
 
 /// The various tasks needed to authorize a user on a node.
+#[derive(Debug)]
 pub enum SSHTask {
     /// Deletes a file on the node.
     DeleteFile { path: String },
@@ -127,21 +154,28 @@ pub enum SSHTask {
     /// Records a user as a jump user.
     RecordJumpUser {
         /// Name of user to record as jump user.
-        name: String,
+        names: Vec<String>,
     },
     /// Deletes all jump users in found_var that are not present in allowed_var.
-    DeleteJumpUsers {
+    PruneJumpUsers {
         /// Var name to read found jump user names from.
         found_var: String,
         /// Var name to read allowed jump user names from.
         allowed_var: String,
     },
-    /// Authorizes a user's public key on a node.
-    AuthorizeKey {
-        /// Name of user to authorize.
-        name: String,
-        /// Public key of user to authorize.
-        pubkey: String,
+    /// Creates jump users in allowed_var not present in found_var.
+    AddJumpUsers {
+        /// Var name to read found jump user names from.
+        found_var: String,
+        /// Var name to read allowed jump user names from.
+        allowed_var: String,
+    },
+    /// Sets the public keys a jump user can use to authenticate, if the value of the variable named by matched is false..
+    SetJumpKeys {
+        /// User to set the public keys for.
+        user: String,
+        /// Keys to authorize for the user.
+        keys: String,
     },
     /// Enables sudo for a user on a node.
     EnableSudo {
@@ -172,12 +206,18 @@ impl SSHTask {
             ),
             Self::ChownDir { path, owner, group } => format!("Let {owner}:{group:?} own {path}"),
             Self::CreateUser { name } => format!("Create user {}", name),
-            Self::RecordJumpUser { name } => format!("Record jump user {}", name),
-            Self::DeleteJumpUsers {
+            Self::RecordJumpUser { names } => format!("Record jump user {names:?}"),
+            Self::PruneJumpUsers {
                 found_var,
                 allowed_var,
             } => format!("Deleting users from ${found_var} not present in ${allowed_var}"),
-            Self::AuthorizeKey { name, pubkey: _ } => format!("Authorize public key for {}", name),
+            Self::AddJumpUsers {
+                found_var,
+                allowed_var,
+            } => format!("Adding users from ${allowed_var} not present in ${found_var}"),
+            Self::SetJumpKeys { user, keys } => {
+                format!("Setting public keys for user to contents of ${keys}")
+            }
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
         }
@@ -187,24 +227,33 @@ impl SSHTask {
     fn module_name(&self) -> &'static str {
         match self {
             Self::DeleteFile { path: _ }
+            | Self::RecordJumpUser { names: _ }
             | Self::ChownDir {
                 path: _,
                 owner: _,
                 group: _,
             } => return "ansible.builtin.file",
+
             Self::ReadFile {
                 path: _,
                 var_name: _,
             } => return "ansible.builtin.shell",
+
             Self::CreateUser { name: _ }
-            | Self::DeleteJumpUsers {
+            | Self::PruneJumpUsers {
+                found_var: _,
+                allowed_var: _,
+            }
+            | Self::AddJumpUsers {
                 found_var: _,
                 allowed_var: _,
             } => return "ansible.builtin.user",
-            Self::AuthorizeKey { name: _, pubkey: _ } => return "ansible.posix.authorized_key",
-            Self::RecordJumpUser { name: _ }
-            | Self::EnableSudo { name: _ }
-            | Self::UseRootPWForSudo { name: _ } => return "ansible.builtin.lineinfile",
+
+            Self::SetJumpKeys { user: _, keys: _ } => return "ansible.posix.authorized_key",
+
+            Self::EnableSudo { name: _ } | Self::UseRootPWForSudo { name: _ } => {
+                return "ansible.builtin.lineinfile"
+            }
         }
     }
 
@@ -242,15 +291,15 @@ impl SSHTask {
                     ("state".to_string(), "present".to_string()),
                 ])
             }
-            Self::RecordJumpUser { name } => {
+            Self::RecordJumpUser { names } => {
                 return HashMap::from([
-                    ("path".to_string(), JUMP_USER_FILE.to_string()),
+                    ("dest".to_string(), JUMP_USER_FILE.to_string()),
                     ("state".to_string(), "present".to_string()),
-                    ("create".to_string(), "yes".to_string()),
-                    ("line".to_string(), name.clone()),
+                    ("force".to_string(), "true".to_string()),
+                    ("content".to_string(), names.join("\n")),
                 ])
             }
-            Self::DeleteJumpUsers {
+            Self::PruneJumpUsers {
                 found_var: _,
                 allowed_var: _,
             } => {
@@ -259,12 +308,22 @@ impl SSHTask {
                     ("state".to_string(), "absent".to_string()),
                 ])
             }
-            Self::AuthorizeKey { name, pubkey } => {
+            Self::AddJumpUsers {
+                found_var,
+                allowed_var,
+            } => {
                 return HashMap::from([
-                    ("key".to_string(), pubkey.clone()),
-                    ("comment".to_string(), format!("jump_user: {}", name)),
-                    ("user".to_string(), name.clone()),
+                    ("name".to_string(), "{{ item }}".to_string()),
+                    ("state".to_string(), "present".to_string()),
+                ])
+            }
+            Self::SetJumpKeys { user, keys } => {
+                return HashMap::from([
+                    ("key".to_string(), keys.clone()),
+                    ("comment".to_string(), format!("jump_user: {user}")),
+                    ("user".to_string(), user.clone()),
                     ("manage_dir".to_string(), "true".to_string()),
+                    ("exclusive".to_string(), "true".to_string()),
                 ])
             }
             Self::EnableSudo { name } => {
@@ -292,37 +351,37 @@ impl SSHTask {
         }
     }
 
-    /// Returns a vector of tasks to be used when setting up a new user.
-    pub fn user_tasks(user: &SSHUser) -> Vec<Self> {
-        let mut tasks = vec![
-            Self::CreateUser {
-                name: user.name.clone(),
-            },
-            Self::RecordJumpUser {
-                name: user.name.clone(),
-            },
-        ];
-        for pubkey in &user.pubkeys {
-            tasks.push(Self::AuthorizeKey {
-                name: user.name.clone(),
-                pubkey: pubkey.to_owned(),
-            })
-        }
-        tasks.push(Self::ChownDir {
-            path: format!("/home/{}/", user.name.clone()),
-            owner: user.name.clone(),
-            group: None,
-        });
-        if user.sudoer == true {
-            tasks.push(Self::EnableSudo {
-                name: user.name.clone(),
-            });
-            tasks.push(Self::UseRootPWForSudo {
-                name: user.name.clone(),
-            });
-        }
-        return tasks;
-    }
+    //     /// Returns a vector of tasks to be used when setting up a new user.
+    //     pub fn user_tasks(user: &SSHUser) -> Vec<Self> {
+    //         let mut tasks = vec![
+    //             Self::CreateUser {
+    //                 name: user.name.clone(),
+    //             },
+    //             Self::RecordJumpUser {
+    //                 names: user.name.clone(),
+    //             },
+    //         ];
+    //         for pubkey in &user.pubkeys {
+    //             tasks.push(Self::AuthorizeKey {
+    //                 name: user.name.clone(),
+    //                 pubkey: pubkey.to_owned(),
+    //             })
+    //         }
+    //         tasks.push(Self::ChownDir {
+    //             path: format!("/home/{}/", user.name.clone()),
+    //             owner: user.name.clone(),
+    //             group: None,
+    //         });
+    //         if user.sudoer == true {
+    //             tasks.push(Self::EnableSudo {
+    //                 name: user.name.clone(),
+    //             });
+    //             tasks.push(Self::UseRootPWForSudo {
+    //                 name: user.name.clone(),
+    //             });
+    //         }
+    //         return tasks;
+    //     }
 }
 
 impl Serialize for SSHTask {
@@ -338,7 +397,7 @@ impl Serialize for SSHTask {
             Self::ReadFile { path: _, var_name } => {
                 task.serialize_entry("register", var_name)?;
             }
-            Self::DeleteJumpUsers {
+            Self::PruneJumpUsers {
                 found_var,
                 allowed_var,
             } => {
@@ -348,6 +407,17 @@ impl Serialize for SSHTask {
                 )?;
                 task.serialize_entry("ignore_errors", &true)?;
             }
+            Self::AddJumpUsers {
+                found_var,
+                allowed_var,
+            } => {
+                task.serialize_entry(
+                    "loop",
+                    &format!("{{{{ {allowed_var} | difference({found_var}.stdout_lines) }}}}"),
+                )?;
+                task.serialize_entry("ignore_errors", &true)?;
+            }
+
             _ => {}
         }
         return task.end();
