@@ -215,7 +215,7 @@ impl SSHTask {
                 allowed_var,
             } => format!("Adding users from ${allowed_var} not present in ${found_var}"),
             Self::SetJumpKeys { user, keys } => {
-                format!("Setting public keys for user to contents of ${keys}")
+                format!("Setting public keys for {user}")
             }
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
             Self::UseRootPWForSudo { name } => format!("Use root password for sudo for {}", name),
