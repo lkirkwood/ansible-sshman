@@ -72,16 +72,6 @@ impl SSHPlay {
             tasks,
         };
     }
-
-    /// Convenience function returning a play that deletes the file recording jump users.
-    pub fn delete_jump_user_file() -> SSHPlay {
-        SSHPlay {
-            name: "Removing jump user record file.".to_string(),
-            group: "*".to_string(),
-            vars: HashMap::new(),
-            tasks: vec![],
-        }
-    }
 }
 
 impl Serialize for SSHPlay {
