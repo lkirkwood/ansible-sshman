@@ -81,8 +81,10 @@ impl Group {
 }
 
 pub trait GroupContainer<'a> {
+    /// Returns the path of this group
     fn path(&self) -> &str;
 
+    /// Returns true if this group container contains the other group container.
     fn contains(&self, container: &(dyn GroupContainer)) -> bool {
         return self.path().contains(container.path());
     }
@@ -109,10 +111,6 @@ pub trait GroupContainer<'a> {
         }
         return hosts;
     }
-
-    // /// Gets a group from its path relative to this object.
-    // /// Wildcard ("*") indicates all groups.
-    // fn get_by_path(&'a self, path: &str) -> Option<&'a dyn (GroupContainer)>;
 }
 
 impl<'a> GroupContainer<'a> for Group {
@@ -127,22 +125,6 @@ impl<'a> GroupContainer<'a> for Group {
     fn child_hosts(&'a self) -> Vec<&'a str> {
         return self.hosts.iter().map(|s| &**s).collect();
     }
-
-    // fn get_by_path(&'a self, path: &str) -> Option<&'a dyn (GroupContainer)> {
-    //     if path == "*" {
-    //         return Some(self);
-    //     } else {
-    //         let mut group = self;
-    //         for name in path.split(':') {
-    //             if group.children.contains_key(name) {
-    //                 group = group.children.get(name).unwrap();
-    //             } else {
-    //                 return None;
-    //             }
-    //         }
-    //         return Some(group);
-    //     }
-    // }
 }
 
 impl<'a> GroupContainer<'a> for Inventory {
@@ -157,28 +139,6 @@ impl<'a> GroupContainer<'a> for Inventory {
     fn child_hosts(&'a self) -> Vec<&'a str> {
         return self.hosts.iter().map(|s| &**s).collect();
     }
-
-    // fn get_by_path(&'a self, path: &str) -> Option<&'a dyn (GroupContainer)> {
-    //     if path == "*" {
-    //         return Some(&self.group);
-    //     } else {
-    //         let names: Vec<&str> = path.split(':').collect();
-    //         let first = *names.first().unwrap();
-    //         if self.group.children().contains_key(first) {
-    //             let mut group = self.groups.get(first).unwrap();
-    //             for name in &names[1..] {
-    //                 if group.children.contains_key(*name) {
-    //                     group = group.children.get(*name).unwrap();
-    //                 } else {
-    //                     return None;
-    //                 }
-    //             }
-    //             return Some(group);
-    //         } else {
-    //             return None;
-    //         }
-    //     }
-    // }
 }
 
 // Parsing
