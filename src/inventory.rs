@@ -28,11 +28,11 @@ impl Inventory {
     pub fn get_path_hosts(&self, path: &str) -> HashSet<&str> {
         let mut path_hosts = HashSet::new();
         for cmp in path.split([':', ',']) {
-            let cmp_hosts = HashSet::from_iter(
-                self.get_group(cmp.trim_start_matches(['&', '!']))
-                    .unwrap()
-                    .descended_hosts(),
-            );
+            let cmp_hosts = match self.get_group(cmp.trim_start_matches(['&', '!'])) {
+                None => continue,
+                Some(group) => HashSet::from_iter(group.descended_hosts()),
+            };
+
             if cmp.starts_with('&') {
                 path_hosts = path_hosts.intersection(&cmp_hosts).map(|s| *s).collect();
             } else if cmp.starts_with('!') {
