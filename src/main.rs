@@ -16,15 +16,23 @@ struct Args {
     /// Path to Ansible inventory file.
     #[clap(short, long, value_parser)]
     inventory: String,
+    /// If set, playbook will be printed to stdout and then exit.
+    #[clap(short, long)]
+    print: bool,
 }
 
 fn main() {
     let args = Args::parse();
-    let conf_content = fs::read_to_string(args.config).expect("Failed to read config file.");
+    let conf_content = fs::read_to_string(&args.config).expect("Failed to read config file.");
     let conf = config::SSHConfig::from_str(&conf_content).unwrap();
 
-    let inv_content = fs::read_to_string(args.inventory).expect("Failed to read inventory.");
+    let inv_content = fs::read_to_string(&args.inventory).expect("Failed to read inventory.");
     let inv = inventory::InventoryParser::inv_from_string(inv_content).unwrap();
+
+    if args.print {
+        println!("{}", conf.apply(&inv).unwrap());
+        std::process::exit(0);
+    }
 
     let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
     outfile
@@ -32,6 +40,8 @@ fn main() {
         .expect("Failed to write to temp file.");
 
     std::process::Command::new("ansible-playbook")
+        .arg("-i")
+        .arg(&args.inventory)
         .arg(outfile.path().to_string_lossy().to_string())
         .spawn()
         .unwrap()
