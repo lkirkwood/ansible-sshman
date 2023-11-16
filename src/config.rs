@@ -38,7 +38,7 @@ impl SSHConfig {
     /// Returns a playbook that will apply this config to a given inventory.
     pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
         let mut host_users = HashMap::new();
-        for (_, user) in &self.users {
+        for user in self.users.values() {
             for host in inv.get_path_hosts(&user.access) {
                 if !host_users.contains_key(host) {
                     host_users.insert(host, HashSet::new());

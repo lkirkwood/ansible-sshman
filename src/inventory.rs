@@ -65,12 +65,11 @@ impl Group {
     pub fn new(path: String) -> Group {
         let depth = path.matches(':').count();
 
-        let name: String;
-        if depth > 0 {
-            name = path.rsplit_once(':').unwrap().1.to_string();
+        let name = if depth > 0 {
+            path.rsplit_once(':').unwrap().1.to_string()
         } else {
-            name = path.clone();
-        }
+            path.clone()
+        };
 
         Group {
             name,
@@ -309,23 +308,12 @@ mod tests {
 
     use super::*;
 
-    // fn dummy_inv() -> Inventory {
-    //     Inventory {
-    //         hosts: vec!["host-1".to_string(), "host-2".to_string()],
-    //         group: vec![Group {
-    //             path: "group_1".to_string(),
-    //             name: "group_1".to_string(),
-    //             depth: 1,
-    //             hosts: vec![
-    //                 "host-1-1".to_string(),
-    //                 "host-1-2".to_string()
-    //             ],
-    //              HashMap::from([("group_1_1".to_string(), Group {
-
-    //             })])
-    //         }],
-    //     }
-    // }
+    #[test]
+    fn test_inventory_parse() {
+        let inv =
+            InventoryParser::inv_from_string(fs::read_to_string("test/test_inv").unwrap()).unwrap();
+        assert_eq!(dummy_inv(), inv)
+    }
 
     fn dummy_inv() -> Inventory {
         Inventory {
@@ -391,12 +379,5 @@ mod tests {
                 )]),
             },
         }
-    }
-
-    #[test]
-    fn test_inventory_parse() {
-        let inv =
-            InventoryParser::inv_from_string(fs::read_to_string("test/test_inv").unwrap()).unwrap();
-        assert_eq!(dummy_inv(), inv)
     }
 }

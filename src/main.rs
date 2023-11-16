@@ -28,7 +28,7 @@ fn main() {
 
     let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
     outfile
-        .write(conf.apply(&inv).unwrap().as_bytes())
+        .write_all(conf.apply(&inv).unwrap().as_bytes())
         .expect("Failed to write to temp file.");
 
     std::process::Command::new("ansible-playbook")
