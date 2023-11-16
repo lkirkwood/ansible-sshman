@@ -26,7 +26,7 @@ This tool will never delete users or their data.
 ## Usage Help
 
 ```
-Tool for managing SSH access to machines in conjunction with Ansible.
+Tool for managing SSH access to machines with Ansible.
 
 Usage: ansible-sshman --config <CONFIG> --inventory <INVENTORY> <COMMAND>
 
