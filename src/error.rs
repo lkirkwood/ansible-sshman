@@ -25,11 +25,3 @@ impl Display for InvalidConfigError {
         write!(f, "Invalid SSH config file; {}", self.message)
     }
 }
-
-impl InvalidConfigError {
-    pub fn from_str(str: &str) -> Self {
-        return InvalidConfigError {
-            message: str.to_string(),
-        };
-    }
-}

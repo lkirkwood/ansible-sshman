@@ -21,7 +21,7 @@ impl Inventory {
                 }
             }
         }
-        return None;
+        None
     }
 
     /// Gets the hosts that are targeted by an access path.
@@ -34,14 +34,14 @@ impl Inventory {
                     .descended_hosts(),
             );
             if cmp.starts_with('&') {
-                path_hosts = path_hosts.intersection(&cmp_hosts).map(|s| *s).collect();
+                path_hosts = path_hosts.intersection(&cmp_hosts).copied().collect();
             } else if cmp.starts_with('!') {
-                path_hosts = path_hosts.difference(&cmp_hosts).map(|s| *s).collect();
+                path_hosts = path_hosts.difference(&cmp_hosts).copied().collect();
             } else {
                 path_hosts.extend(cmp_hosts);
             }
         }
-        return path_hosts;
+        path_hosts
     }
 }
 
@@ -56,7 +56,7 @@ pub struct Group {
     /// Nesting depth of this group (number of parent groups).
     pub depth: usize,
     /// Groups in this group.
-    children: HashMap<String, Group>,
+    pub children: HashMap<String, Group>,
 }
 
 impl Group {
@@ -72,13 +72,13 @@ impl Group {
             name = path.clone();
         }
 
-        return Group {
+        Group {
             name,
             path,
             hosts: Vec::new(),
             depth,
             children: HashMap::new(),
-        };
+        }
     }
 }
 
@@ -99,7 +99,7 @@ pub trait GroupContainer<'a> {
         for child in self.children() {
             children.extend(child.descendants());
         }
-        return children;
+        children
     }
 
     /// Returns all hosts defined directly within this group.
@@ -111,13 +111,13 @@ pub trait GroupContainer<'a> {
         for child in self.children() {
             hosts.extend(child.descended_hosts());
         }
-        return hosts;
+        hosts
     }
 }
 
 impl<'a> GroupContainer<'a> for Group {
     fn path(&self) -> &str {
-        return &self.path;
+        &self.path
     }
 
     fn children(&'a self) -> Vec<&'a Group> {
@@ -131,7 +131,7 @@ impl<'a> GroupContainer<'a> for Group {
 
 impl<'a> GroupContainer<'a> for Inventory {
     fn path(&self) -> &str {
-        return "*";
+        "*"
     }
 
     fn children(&'a self) -> Vec<&'a Group> {
@@ -163,8 +163,8 @@ impl GroupOutline {
         GroupOutline {
             name,
             path,
-            children: Vec::new(),
-            hosts: Vec::new(),
+            children: vec![],
+            hosts: vec![],
         }
     }
 }
@@ -202,7 +202,7 @@ impl InventoryParser {
         }
 
         group.hosts = outline.hosts.clone();
-        return Ok(group);
+        Ok(group)
     }
 
     /// Creates an inventory from stored data.
@@ -217,10 +217,10 @@ impl InventoryParser {
         let mut wildcard = Group::new("*".to_string());
         wildcard.children = groups;
 
-        return Ok(Inventory {
+        Ok(Inventory {
             hosts: self.hosts.clone(),
             group: wildcard,
-        });
+        })
     }
 
     /// Stores the data parsed from an inventory file.
@@ -228,11 +228,11 @@ impl InventoryParser {
         let mut line_buf = &mut self.hosts;
         let mut last_path = "".to_string();
         for line in self.content.lines() {
-            if line.starts_with("#") | line.trim().is_empty() {
+            if line.starts_with('#') | line.trim().is_empty() {
                 continue;
-            } else if line.starts_with("[") {
+            } else if line.starts_with('[') {
                 let mut name = line.trim()[1..line.len() - 1].to_string();
-                if self.children_def == true {
+                if self.children_def {
                     // leaving children def
                     self.children.insert(last_path, line_buf.clone());
                     self.children_def = false;
@@ -282,7 +282,7 @@ impl InventoryParser {
             children_def: false,
         };
         parser.parse();
-        return parser.to_inv();
+        parser.to_inv()
     }
 }
 
@@ -299,7 +299,7 @@ impl<T: Eq> Finder<T> for HashMap<T, Vec<T>> {
                 return Some(key);
             }
         }
-        return None;
+        None
     }
 }
 
@@ -320,7 +320,7 @@ mod tests {
     //                 "host-1-1".to_string(),
     //                 "host-1-2".to_string()
     //             ],
-    //             children: HashMap::from([("group_1_1".to_string(), Group {
+    //              HashMap::from([("group_1_1".to_string(), Group {
 
     //             })])
     //         }],

@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::config::SSHUser;
 
-pub const JUMP_USER_FILE: &'static str = "/home/ansible/.ssh/jump_users";
+pub const JUMP_USER_FILE: &str = "/home/ansible/.ssh/jump_users";
 
 /// Models an ansible play.
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl SSHPlay {
         let found_var = "found_users".to_string();
         let allowed_var = "allowed_users".to_string();
 
-        return SSHPlay {
+        SSHPlay {
             name: "Updating jump users".to_string(),
             group,
             vars: HashMap::from([(allowed_var.clone(), SSHPlayVars::List(allowed))]),
@@ -44,7 +44,7 @@ impl SSHPlay {
                     allowed_var,
                 },
             ],
-        };
+        }
     }
 
     /// Convenience function returning a play that authenticates existing users.
@@ -52,25 +52,24 @@ impl SSHPlay {
         let mut tasks = Vec::new();
         for user in users {
             let keys = user.pubkeys.join("\n");
-            let keys_match = format!("{}_keysmatch", user.name);
             tasks.push(SSHTask::SetJumpKeys {
                 user: user.name.clone(),
                 keys,
             });
 
-            if user.sudoer == true {
+            if user.sudoer {
                 tasks.push(SSHTask::EnableSudo {
                     name: user.name.clone(),
                 });
             }
         }
 
-        return SSHPlay {
+        SSHPlay {
             name: "Authenticating jump users".to_string(),
             group,
             vars: HashMap::new(),
             tasks,
-        };
+        }
     }
 }
 
@@ -84,11 +83,12 @@ impl Serialize for SSHPlay {
         play.serialize_entry("hosts", &self.group)?;
         play.serialize_entry("vars", &self.vars)?;
         play.serialize_entry("tasks", &self.tasks)?;
-        return play.end();
+        play.end()
     }
 }
 
 /// Models the possible types of vars to include in a play.
+#[allow(unused)]
 #[derive(Debug)]
 pub enum SSHPlayVars {
     String(String),
@@ -122,6 +122,7 @@ impl Serialize for SSHPlayVars {
 }
 
 /// The various tasks needed to authorize a user on a node.
+#[allow(unused)]
 #[derive(Debug)]
 pub enum SSHTask {
     /// Deletes a file on the node.
@@ -204,7 +205,7 @@ impl SSHTask {
                 found_var,
                 allowed_var,
             } => format!("Adding users from ${allowed_var} not present in ${found_var}"),
-            Self::SetJumpKeys { user, keys } => {
+            Self::SetJumpKeys { user, .. } => {
                 format!("Setting public keys for {user}")
             }
             Self::EnableSudo { name } => format!("Enable sudo for {}", name),
@@ -221,12 +222,12 @@ impl SSHTask {
                 path: _,
                 owner: _,
                 group: _,
-            } => return "ansible.builtin.file",
+            } => "ansible.builtin.file",
 
             Self::ReadFile {
                 path: _,
                 var_name: _,
-            } => return "ansible.builtin.shell",
+            } => "ansible.builtin.shell",
 
             Self::CreateUser { name: _ }
             | Self::PruneJumpUsers {
@@ -236,12 +237,12 @@ impl SSHTask {
             | Self::AddJumpUsers {
                 found_var: _,
                 allowed_var: _,
-            } => return "ansible.builtin.user",
+            } => "ansible.builtin.user",
 
-            Self::SetJumpKeys { user: _, keys: _ } => return "ansible.posix.authorized_key",
+            Self::SetJumpKeys { user: _, keys: _ } => "ansible.posix.authorized_key",
 
             Self::EnableSudo { name: _ } | Self::UseRootPWForSudo { name: _ } => {
-                return "ansible.builtin.lineinfile"
+                "ansible.builtin.lineinfile"
             }
         }
     }
@@ -250,13 +251,13 @@ impl SSHTask {
     pub fn module_map(&self) -> HashMap<String, String> {
         match self {
             Self::DeleteFile { path } => {
-                return HashMap::from([
+                HashMap::from([
                     ("path".to_string(), path.clone()),
                     ("state".to_string(), "absent".to_string()),
                 ])
             }
             Self::ReadFile { path, var_name: _ } => {
-                return HashMap::from([(
+                HashMap::from([(
                     "cmd".to_string(),
                     format!("[ ! -f {} ] || cat {}", path, path),
                 )])
@@ -272,16 +273,16 @@ impl SSHTask {
                 } else {
                     outmap.insert("group".to_string(), owner.clone());
                 }
-                return outmap;
+                outmap
             }
             Self::CreateUser { name } => {
-                return HashMap::from([
+                HashMap::from([
                     ("name".to_string(), name.clone()),
                     ("state".to_string(), "present".to_string()),
                 ])
             }
             Self::RecordJumpUser { names } => {
-                return HashMap::from([
+                HashMap::from([
                     ("dest".to_string(), JUMP_USER_FILE.to_string()),
                     ("state".to_string(), "present".to_string()),
                     ("force".to_string(), "true".to_string()),
@@ -292,22 +293,19 @@ impl SSHTask {
                 found_var: _,
                 allowed_var: _,
             } => {
-                return HashMap::from([
+                HashMap::from([
                     ("name".to_string(), "{{ item }}".to_string()),
                     ("state".to_string(), "absent".to_string()),
                 ])
             }
-            Self::AddJumpUsers {
-                found_var,
-                allowed_var,
-            } => {
-                return HashMap::from([
+            Self::AddJumpUsers { .. } => {
+                HashMap::from([
                     ("name".to_string(), "{{ item }}".to_string()),
                     ("state".to_string(), "present".to_string()),
                 ])
             }
             Self::SetJumpKeys { user, keys } => {
-                return HashMap::from([
+                HashMap::from([
                     ("key".to_string(), keys.clone()),
                     ("comment".to_string(), format!("jump_user: {user}")),
                     ("user".to_string(), user.clone()),
@@ -316,7 +314,7 @@ impl SSHTask {
                 ])
             }
             Self::EnableSudo { name } => {
-                return HashMap::from([
+                HashMap::from([
                     (
                         "path".to_string(),
                         "/etc/sudoers.d/ansible-sshman".to_string(),
@@ -327,7 +325,7 @@ impl SSHTask {
                 ])
             }
             Self::UseRootPWForSudo { name } => {
-                return HashMap::from([
+                HashMap::from([
                     (
                         "path".to_string(),
                         "/etc/sudoers.d/ansible-sshman".to_string(),
@@ -409,6 +407,6 @@ impl Serialize for SSHTask {
 
             _ => {}
         }
-        return task.end();
+        task.end()
     }
 }

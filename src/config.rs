@@ -27,12 +27,12 @@ impl SSHConfig {
     /// Parses an SSHConfig from some yaml.
     pub fn from_str(content: &str) -> Result<SSHConfig, Box<dyn Error>> {
         let list: Vec<SSHUser> = serde_yaml::from_str(content)?;
-        return Ok(SSHConfig {
+        Ok(SSHConfig {
             users: list
                 .into_iter()
                 .map(|usr| (usr.name.clone(), usr))
                 .collect(),
-        });
+        })
     }
 
     /// Returns a playbook that will apply this config to a given inventory.
@@ -70,6 +70,6 @@ impl SSHConfig {
             ));
         }
 
-        return Ok(serde_yaml::to_string(&plays)?);
+        Ok(serde_yaml::to_string(&plays)?)
     }
 }
