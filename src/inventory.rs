@@ -2,7 +2,7 @@ use crate::error::UndefinedGroupError;
 
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Inventory {
     /// Hostnames defined in the inventory outside of a group.
     pub hosts: Vec<String>,
@@ -45,7 +45,7 @@ impl Inventory {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Group {
     /// Name of the group.
     pub name: String,
@@ -60,6 +60,8 @@ pub struct Group {
 }
 
 impl Group {
+    /// Constructs a new group from its path
+    /// e.g. group_1:group_1_2:group_1_2_1
     pub fn new(path: String) -> Group {
         let depth = path.matches(':').count();
 
@@ -153,12 +155,11 @@ struct GroupOutline {
 
 impl GroupOutline {
     pub fn new(path: String) -> GroupOutline {
-        let name: String;
-        if path.contains(':') {
-            name = path.rsplit_once(':').unwrap().1.to_string();
-        } else {
-            name = path.clone();
-        }
+        let name = match path.rsplit_once(':') {
+            Some(split) => split.1.to_owned(),
+            None => path.to_owned(),
+        };
+
         GroupOutline {
             name,
             path,
@@ -193,13 +194,11 @@ impl InventoryParser {
         let mut group = Group::new(outline.path.to_string());
         for child_name in &outline.children {
             let path = format!("{}:{}", outline.path, child_name);
-            match self.outlines.get(&path) {
-                None => return Err(UndefinedGroupError { name: path }),
-                Some(child_outline) => {
-                    let child = self.resolve_outline(child_outline)?;
-                    group.children.insert(child_name.to_string(), child);
-                }
-            }
+            let child = match self.outlines.get(&path) {
+                None => Group::new(path),
+                Some(child_outline) => self.resolve_outline(child_outline)?,
+            };
+            group.children.insert(child.name.clone(), child);
         }
 
         group.hosts = outline.hosts.clone();
@@ -226,7 +225,7 @@ impl InventoryParser {
 
     /// Stores the data parsed from an inventory file.
     fn parse(&mut self) {
-        let mut line_buf: &mut Vec<String> = &mut self.hosts;
+        let mut line_buf = &mut self.hosts;
         let mut last_path = "".to_string();
         for line in self.content.lines() {
             if line.starts_with("#") | line.trim().is_empty() {
@@ -301,5 +300,103 @@ impl<T: Eq> Finder<T> for HashMap<T, Vec<T>> {
             }
         }
         return None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    // fn dummy_inv() -> Inventory {
+    //     Inventory {
+    //         hosts: vec!["host-1".to_string(), "host-2".to_string()],
+    //         group: vec![Group {
+    //             path: "group_1".to_string(),
+    //             name: "group_1".to_string(),
+    //             depth: 1,
+    //             hosts: vec![
+    //                 "host-1-1".to_string(),
+    //                 "host-1-2".to_string()
+    //             ],
+    //             children: HashMap::from([("group_1_1".to_string(), Group {
+
+    //             })])
+    //         }],
+    //     }
+    // }
+
+    fn dummy_inv() -> Inventory {
+        Inventory {
+            hosts: vec!["host-1".to_string(), "host-2".to_string()],
+            group: Group {
+                name: "*".to_string(),
+                path: "*".to_string(),
+                hosts: vec![],
+                depth: 0,
+                children: HashMap::from([(
+                    "group_1".to_string(),
+                    Group {
+                        name: "group_1".to_string(),
+                        path: "group_1".to_string(),
+                        hosts: vec!["host-1-1".to_string(), "host-1-2".to_string()],
+                        depth: 0,
+                        children: HashMap::from([
+                            (
+                                "group_1_1".to_string(),
+                                Group {
+                                    name: "group_1_1".to_string(),
+                                    path: "group_1:group_1_1".to_string(),
+                                    hosts: vec!["host-1-1-1".to_string(), "host-1-1-2".to_string()],
+                                    depth: 1,
+                                    children: HashMap::new(),
+                                },
+                            ),
+                            (
+                                "group_1_3".to_string(),
+                                Group {
+                                    name: "group_1_3".to_string(),
+                                    path: "group_1:group_1_3".to_string(),
+                                    hosts: vec![],
+                                    depth: 1,
+                                    children: HashMap::new(),
+                                },
+                            ),
+                            (
+                                "group_1_2".to_string(),
+                                Group {
+                                    name: "group_1_2".to_string(),
+                                    path: "group_1:group_1_2".to_string(),
+                                    hosts: vec!["host-1-2-1".to_string()],
+                                    depth: 1,
+                                    children: HashMap::from([(
+                                        "group_1_2_1".to_string(),
+                                        Group {
+                                            name: "group_1_2_1".to_string(),
+                                            path: "group_1:group_1_2:group_1_2_1".to_string(),
+                                            hosts: vec![
+                                                "host-1-2-1-1".to_string(),
+                                                "host-1-2-1-2".to_string(),
+                                                "host-1-2-1-3".to_string(),
+                                            ],
+                                            depth: 2,
+                                            children: HashMap::new(),
+                                        },
+                                    )]),
+                                },
+                            ),
+                        ]),
+                    },
+                )]),
+            },
+        }
+    }
+
+    #[test]
+    fn test_inventory_parse() {
+        let inv =
+            InventoryParser::inv_from_string(fs::read_to_string("test/test_inv").unwrap()).unwrap();
+        assert_eq!(dummy_inv(), inv)
     }
 }
