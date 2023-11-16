@@ -3,7 +3,7 @@ mod error;
 mod inventory;
 mod model;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::{fs, io::Write};
 use tempfile::NamedTempFile;
 
@@ -16,6 +16,22 @@ struct Args {
     /// Path to Ansible inventory file.
     #[clap(short, long, value_parser)]
     inventory: String,
+
+    #[clap(subcommand)]
+    command: Action,
+}
+
+#[derive(Debug, Subcommand)]
+/// What to do with the generated playbook.
+enum Action {
+    /// Generates and runs the playbook immediately.
+    Run, // TODO add arbitrary args for ansible-playbook
+    /// Writes the playbook to a file.
+    Write {
+        /// Path to write the playbook to.
+        #[clap(value_parser)]
+        path: String,
+    },
 }
 
 fn main() {
@@ -26,17 +42,26 @@ fn main() {
     let inv_content = fs::read_to_string(args.inventory).expect("Failed to read inventory.");
     let inv = inventory::InventoryParser::inv_from_string(inv_content).unwrap();
 
-    let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
-    outfile
-        .write_all(conf.apply(&inv).unwrap().as_bytes())
-        .expect("Failed to write to temp file.");
+    let playbook = conf.apply(&inv).unwrap();
 
-    std::process::Command::new("ansible-playbook")
-        .arg(outfile.path().to_string_lossy().to_string())
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
+    match args.command {
+        Action::Run => {
+            let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
+            outfile
+                .write_all(playbook.as_bytes())
+                .expect("Failed to write to temp file.");
 
-    outfile.close().expect("Failed to remove temp file.");
+            std::process::Command::new("ansible-playbook")
+                .arg(outfile.path().to_string_lossy().to_string())
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            outfile.close().expect("Failed to remove temp file.");
+        }
+        Action::Write { path } => {
+            fs::write(path, playbook).expect("Failed to write playbook.");
+        }
+    }
 }
