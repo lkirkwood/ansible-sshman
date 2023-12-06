@@ -40,7 +40,7 @@ fn main() {
     let conf = config::SSHConfig::from_str(&conf_content).unwrap();
 
     let inv_content = fs::read_to_string(args.inventory).expect("Failed to read inventory.");
-    let inv = inventory::InventoryParser::inv_from_string(inv_content).unwrap();
+    let inv = inventory::InventoryParser::inv_from_ini(inv_content).unwrap();
 
     let playbook = conf.apply(&inv).unwrap();
 
