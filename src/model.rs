@@ -74,7 +74,7 @@ impl SSHPlay {
     }
 
     /// Convenience function returning a play that authenticates existing users.
-    pub fn set_jump_pubkeys(group: String, users: Vec<&SSHUser>) -> SSHPlay {
+    pub fn set_user_pubkeys(group: String, users: Vec<&SSHUser>) -> SSHPlay {
         let mut tasks = Vec::new();
         for user in users {
             let keys = user.pubkeys.join("\n");

@@ -77,7 +77,7 @@ impl SSHConfig {
                 group.clone(),
                 users.iter().filter_map(|u| self.users.get(u)).collect(),
             ));
-            plays.push(SSHPlay::set_jump_pubkeys(
+            plays.push(SSHPlay::set_user_pubkeys(
                 group.clone(),
                 users
                     .into_iter()
