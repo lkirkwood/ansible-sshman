@@ -8,13 +8,21 @@ use std::{
 
 use crate::{inventory::Inventory, model::SSHPlay};
 
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    User,
+    Sudoer,
+    SuperUser,
+}
+
 /// Models a user in the config file.
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
     pub access: String,
-    pub sudoer: bool,
+    pub role: Role,
 }
 
 /// Models a config file.
@@ -60,7 +68,10 @@ impl SSHConfig {
         let mut plays = Vec::new();
         for (users, hosts) in user_hosts {
             let group = hosts.join(":");
-            plays.push(SSHPlay::set_jump_accounts(group.clone(), users.clone()));
+            plays.push(SSHPlay::set_accounts(
+                group.clone(),
+                users.iter().filter_map(|u| self.users.get(u)).collect(),
+            ));
             plays.push(SSHPlay::set_jump_pubkeys(
                 group.clone(),
                 users
