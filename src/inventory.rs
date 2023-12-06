@@ -4,18 +4,16 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Inventory {
-    /// Hostnames defined in the inventory outside of a group.
-    pub hosts: Vec<String>,
     /// Root group.
-    group: Group,
+    root: Group,
 }
 
 impl Inventory {
     pub fn get_group(&self, name: &str) -> Option<&Group> {
         if name == "all" {
-            return Some(&self.group);
+            return Some(&self.root);
         } else {
-            for group in self.group.descendants() {
+            for group in self.root.descendants() {
                 if group.name == name {
                     return Some(group);
                 }
@@ -25,12 +23,11 @@ impl Inventory {
     }
 
     /// Gets the hosts that are targeted by an access path.
-    pub fn get_path_hosts(&self, path: &str) -> HashSet<&str> {
+    pub fn get_path_hosts(&self, path: &str) -> Option<HashSet<&str>> {
         let mut path_hosts = HashSet::new();
         for cmp in path.split([':', ',']) {
             let cmp_hosts = HashSet::from_iter(
-                self.get_group(cmp.trim_start_matches(['&', '!']))
-                    .unwrap()
+                self.get_group(cmp.trim_start_matches(['&', '!']))?
                     .descended_hosts(),
             );
             if cmp.starts_with('&') {
@@ -41,7 +38,7 @@ impl Inventory {
                 path_hosts.extend(cmp_hosts);
             }
         }
-        path_hosts
+        Some(path_hosts)
     }
 }
 
@@ -134,11 +131,11 @@ impl<'a> GroupContainer<'a> for Inventory {
     }
 
     fn children(&'a self) -> Vec<&'a Group> {
-        return self.group.children();
+        return self.root.children();
     }
 
     fn child_hosts(&'a self) -> Vec<&'a str> {
-        return self.hosts.iter().map(|s| &**s).collect();
+        return self.root.hosts.iter().map(|s| &**s).collect();
     }
 }
 
@@ -215,11 +212,9 @@ impl InventoryParser {
         }
         let mut root = Group::new("all".to_string());
         root.children = groups;
+        root.hosts = self.hosts.clone();
 
-        Ok(Inventory {
-            hosts: self.hosts.clone(),
-            group: root,
-        })
+        Ok(Inventory { root })
     }
 
     /// Stores the data parsed from an inventory file.
@@ -317,11 +312,10 @@ mod tests {
 
     fn dummy_inv() -> Inventory {
         Inventory {
-            hosts: vec!["host-1".to_string(), "host-2".to_string()],
-            group: Group {
+            root: Group {
                 name: "all".to_string(),
                 path: "all".to_string(),
-                hosts: vec![],
+                hosts: vec!["host-1".to_string(), "host-2".to_string()],
                 depth: 0,
                 children: HashMap::from([(
                     "group_1".to_string(),

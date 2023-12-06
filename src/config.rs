@@ -47,11 +47,16 @@ impl SSHConfig {
     pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
         let mut host_users = HashMap::new();
         for user in self.users.values() {
-            for host in inv.get_path_hosts(&user.access) {
-                if !host_users.contains_key(host) {
-                    host_users.insert(host, HashSet::new());
+            match inv.get_path_hosts(&user.access) {
+                Some(hosts) => {
+                    for host in hosts {
+                        if !host_users.contains_key(host) {
+                            host_users.insert(host, HashSet::new());
+                        }
+                        host_users.get_mut(host).unwrap().insert(user.name.clone());
+                    }
                 }
-                host_users.get_mut(host).unwrap().insert(user.name.clone());
+                None => eprintln!("Invalid access pattern: {}", user.access),
             }
         }
 
