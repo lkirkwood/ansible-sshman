@@ -6,13 +6,13 @@ use std::collections::{HashMap, HashSet};
 pub struct Inventory {
     /// Hostnames defined in the inventory outside of a group.
     pub hosts: Vec<String>,
-    /// Internal group object for wildcard group.
+    /// Root group.
     group: Group,
 }
 
 impl Inventory {
     pub fn get_group(&self, name: &str) -> Option<&Group> {
-        if name == "*" {
+        if name == "all" {
             return Some(&self.group);
         } else {
             for group in self.group.descendants() {
@@ -130,7 +130,7 @@ impl<'a> GroupContainer<'a> for Group {
 
 impl<'a> GroupContainer<'a> for Inventory {
     fn path(&self) -> &str {
-        "*"
+        "all"
     }
 
     fn children(&'a self) -> Vec<&'a Group> {
@@ -213,12 +213,12 @@ impl InventoryParser {
                 groups.insert(group.name.clone(), group);
             }
         }
-        let mut wildcard = Group::new("*".to_string());
-        wildcard.children = groups;
+        let mut root = Group::new("all".to_string());
+        root.children = groups;
 
         Ok(Inventory {
             hosts: self.hosts.clone(),
-            group: wildcard,
+            group: root,
         })
     }
 
@@ -271,8 +271,8 @@ impl InventoryParser {
         }
     }
 
-    /// Returns a new inventory from a string.
-    pub fn inv_from_string(content: String) -> Result<Inventory, UndefinedGroupError> {
+    /// Returns a new inventory from the contents of an ini file.
+    pub fn inv_from_ini(content: String) -> Result<Inventory, UndefinedGroupError> {
         let mut parser = InventoryParser {
             content,
             outlines: HashMap::new(),
@@ -311,7 +311,7 @@ mod tests {
     #[test]
     fn test_inventory_parse() {
         let inv =
-            InventoryParser::inv_from_string(fs::read_to_string("test/test_inv").unwrap()).unwrap();
+            InventoryParser::inv_from_ini(fs::read_to_string("test/test_inv").unwrap()).unwrap();
         assert_eq!(dummy_inv(), inv)
     }
 
@@ -319,8 +319,8 @@ mod tests {
         Inventory {
             hosts: vec!["host-1".to_string(), "host-2".to_string()],
             group: Group {
-                name: "*".to_string(),
-                path: "*".to_string(),
+                name: "all".to_string(),
+                path: "all".to_string(),
                 hosts: vec![],
                 depth: 0,
                 children: HashMap::from([(
