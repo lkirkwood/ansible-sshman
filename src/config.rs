@@ -8,13 +8,21 @@ use std::{
 
 use crate::{inventory::Inventory, model::SSHPlay};
 
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    User,
+    Sudoer,
+    SuperUser,
+}
+
 /// Models a user in the config file.
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
     pub access: String,
-    pub sudoer: bool,
+    pub role: Role,
 }
 
 /// Models a config file.
@@ -27,19 +35,19 @@ impl SSHConfig {
     /// Parses an SSHConfig from some yaml.
     pub fn from_str(content: &str) -> Result<SSHConfig, Box<dyn Error>> {
         let list: Vec<SSHUser> = serde_yaml::from_str(content)?;
-        return Ok(SSHConfig {
+        Ok(SSHConfig {
             users: list
                 .into_iter()
                 .map(|usr| (usr.name.clone(), usr))
                 .collect(),
-        });
+        })
     }
 
     /// Returns a playbook that will apply this config to a given inventory.
     pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
         let mut host_users = HashMap::new();
-        for (_, user) in &self.users {
-            for host in inv.get_path_hosts(&user.access) {
+        for user in self.users.values() {
+            for host in inv.get_pattern_hosts(&user.access) {
                 if !host_users.contains_key(host) {
                     host_users.insert(host, HashSet::new());
                 }
@@ -60,8 +68,11 @@ impl SSHConfig {
         let mut plays = Vec::new();
         for (users, hosts) in user_hosts {
             let group = hosts.join(":");
-            plays.push(SSHPlay::set_jump_accounts(group.clone(), users.clone()));
-            plays.push(SSHPlay::set_jump_pubkeys(
+            plays.push(SSHPlay::set_accounts(
+                group.clone(),
+                users.iter().filter_map(|u| self.users.get(u)).collect(),
+            ));
+            plays.push(SSHPlay::set_user_pubkeys(
                 group.clone(),
                 users
                     .into_iter()
@@ -70,6 +81,6 @@ impl SSHConfig {
             ));
         }
 
-        return Ok(serde_yaml::to_string(&plays)?);
+        Ok(serde_yaml::to_string(&plays)?)
     }
 }

@@ -1,12 +1,15 @@
 # ansible-sshman
 
-This tool aims to make managing SSH access easier for those using ansible.
+Write a simple yaml file and let ansible set up SSH access to your servers.
 
 ## How it works
 
-Reads a yaml config file that defines users and their access to the hosts in the ansible inventory.
-Generates a playbook and runs it with the installed ansible instance, creating accounts for each user on the hosts they have access to.
-Also keeps track of accounts it has created, and disables them if they have been removed from the config.
+Reads a yaml config file that lists users and which hosts to give them access to.
+Generates a playbook and runs it with `ansible-playbook` or writes it to a file.
+The playbook creates accounts for each user on the hosts they have access to and adds their listed public key to their authorised list.
+It keeps track of accounts it has created, and disables them if they have been removed from the config.
+
+This tool will never delete users or their data.
 
 ## Config format
 
@@ -18,4 +21,23 @@ Also keeps track of accounts it has created, and disables them if they have been
     - the user may use to login.
   access: Ansible group pattern matching hosts this user should have access to.
   sudoer: Whether this user should be able to use sudo on the hosts.
+```
+
+## Usage Help
+
+```
+Tool for managing SSH access to machines with Ansible.
+
+Usage: ansible-sshman --config <CONFIG> --inventory <INVENTORY> <COMMAND>
+
+Commands:
+  run    Generates and runs the playbook immediately
+  write  Writes the playbook to a file
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <CONFIG>        Path to ssh config file
+  -i, --inventory <INVENTORY>  Path to Ansible inventory file
+  -h, --help                   Print help
+  -V, --version                Print version
 ```

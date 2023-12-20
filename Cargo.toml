@@ -1,16 +1,16 @@
 [package]
 name = "ansible-sshman"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Linus <linuskirkwood@gmail.com>"]
-description = "Tool for managing SSH access to machines in conjunction with Ansible."
+description = "Tool for managing SSH access to machines with Ansible."
 repository = "https://github.com/lirkwood/ansible-sshman"
 keywords = ["ansible", "ssh", "cli", "network", "security"]
 categories = ["command-line-utilities", "config", "network-programming", "parsing", "cryptography"]
 license = "GPL-3.0-or-later"
 
 [dependencies]
-clap = {version = "3.2.20", features = ["derive"]}
-serde = {version = "1.0.144", features = ["derive"]}
-serde_yaml = "0.9.11"
-tempfile = "3.3.0"
+clap = { version = "4.4.8", features = ["derive"] }
+serde = {version = "1.0.192", features = ["derive"]}
+serde_yaml = "0.9.27"
+tempfile = "3.8.1"
