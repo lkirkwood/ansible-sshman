@@ -18,18 +18,14 @@ impl Inventory {
 
             if name.starts_with('&') {
                 if let Some(group) = self.groups.get(raw_name) {
-                    hosts = hosts
-                        .intersection(&group.hosts()).copied()
-                        .collect();
+                    hosts = hosts.intersection(&group.hosts()).copied().collect()
                 }
             } else if name.starts_with('!') {
                 if let Some(group) = self.groups.get(raw_name) {
-                    hosts = hosts
-                        .difference(&group.hosts()).copied()
-                        .collect();
+                    hosts = hosts.difference(&group.hosts()).copied().collect()
                 }
             } else if let Some(group) = self.groups.get(name) {
-                hosts.extend(group.hosts());
+                hosts.extend(group.hosts())
             }
         }
 
