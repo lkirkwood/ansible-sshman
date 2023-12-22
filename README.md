@@ -11,6 +11,13 @@ It keeps track of accounts it has created, and disables them if they have been r
 
 This tool will never delete users or their data.
 
+### Roles
+
+Users can have one of three possible roles:
++ `user` : Normal user that cannot use sudo.
++ `sudoer` : Normal user that can use sudo.
++ `superuser` : User with UID 0 — equivalent to root.
+
 ## Config format
 
 ```yaml
@@ -20,7 +27,7 @@ This tool will never delete users or their data.
     - public keys
     - the user may use to login.
   access: Ansible group pattern matching hosts this user should have access to.
-  sudoer: Whether this user should be able to use sudo on the hosts.
+  role: Controls the privileges a user has on the host. One of the roles listed above.
 ```
 
 ## Usage Help
