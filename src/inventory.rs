@@ -19,23 +19,17 @@ impl Inventory {
             if name.starts_with('&') {
                 if let Some(group) = self.groups.get(raw_name) {
                     hosts = hosts
-                        .intersection(&group.hosts())
-                        .into_iter()
-                        .map(|i| *i)
+                        .intersection(&group.hosts()).copied()
                         .collect();
                 }
             } else if name.starts_with('!') {
                 if let Some(group) = self.groups.get(raw_name) {
                     hosts = hosts
-                        .difference(&group.hosts())
-                        .into_iter()
-                        .map(|i| *i)
+                        .difference(&group.hosts()).copied()
                         .collect();
                 }
-            } else {
-                if let Some(group) = self.groups.get(name) {
-                    hosts.extend(group.hosts());
-                }
+            } else if let Some(group) = self.groups.get(name) {
+                hosts.extend(group.hosts());
             }
         }
 
@@ -61,7 +55,6 @@ impl Group {
         let mut outset = self
             .hosts
             .keys()
-            .into_iter()
             .map(|h| h.as_str())
             .collect::<HashSet<&str>>();
 
@@ -69,6 +62,6 @@ impl Group {
             outset.extend(group.hosts());
         }
 
-        return outset;
+        outset
     }
 }
