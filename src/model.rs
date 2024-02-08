@@ -358,38 +358,6 @@ impl SSHTask {
             ]),
         }
     }
-
-    //     /// Returns a vector of tasks to be used when setting up a new user.
-    //     pub fn user_tasks(user: &SSHUser) -> Vec<Self> {
-    //         let mut tasks = vec![
-    //             Self::CreateUser {
-    //                 name: user.name.clone(),
-    //             },
-    //             Self::RecordJumpUser {
-    //                 names: user.name.clone(),
-    //             },
-    //         ];
-    //         for pubkey in &user.pubkeys {
-    //             tasks.push(Self::AuthorizeKey {
-    //                 name: user.name.clone(),
-    //                 pubkey: pubkey.to_owned(),
-    //             })
-    //         }
-    //         tasks.push(Self::ChownDir {
-    //             path: format!("/home/{}/", user.name.clone()),
-    //             owner: user.name.clone(),
-    //             group: None,
-    //         });
-    //         if user.sudoer == true {
-    //             tasks.push(Self::EnableSudo {
-    //                 name: user.name.clone(),
-    //             });
-    //             tasks.push(Self::UseRootPWForSudo {
-    //                 name: user.name.clone(),
-    //             });
-    //         }
-    //         return tasks;
-    //     }
 }
 
 impl Serialize for SSHTask {
