@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Inventory {
+    /// Groups in the inventory.
     pub groups: HashMap<String, Group>,
 }
 
@@ -14,28 +15,26 @@ impl Inventory {
 
         let names = pattern.split([':', ',']);
         for name in names {
+            if name == "*" {
+                return self
+                    .groups
+                    .get("all")
+                    .expect("Inventory does not contain the group 'all'.")
+                    .hosts();
+            }
+
             let raw_name = name.trim_start_matches(['&', '!']);
 
             if name.starts_with('&') {
                 if let Some(group) = self.groups.get(raw_name) {
-                    hosts = hosts
-                        .intersection(&group.hosts())
-                        .into_iter()
-                        .map(|i| *i)
-                        .collect();
+                    hosts = hosts.intersection(&group.hosts()).copied().collect()
                 }
             } else if name.starts_with('!') {
                 if let Some(group) = self.groups.get(raw_name) {
-                    hosts = hosts
-                        .difference(&group.hosts())
-                        .into_iter()
-                        .map(|i| *i)
-                        .collect();
+                    hosts = hosts.difference(&group.hosts()).copied().collect()
                 }
-            } else {
-                if let Some(group) = self.groups.get(name) {
-                    hosts.extend(group.hosts());
-                }
+            } else if let Some(group) = self.groups.get(name) {
+                hosts.extend(group.hosts())
             }
         }
 
@@ -61,7 +60,6 @@ impl Group {
         let mut outset = self
             .hosts
             .keys()
-            .into_iter()
             .map(|h| h.as_str())
             .collect::<HashSet<&str>>();
 
@@ -69,6 +67,9 @@ impl Group {
             outset.extend(group.hosts());
         }
 
-        return outset;
+        outset
     }
 }
+
+#[cfg(test)]
+mod tests {}
