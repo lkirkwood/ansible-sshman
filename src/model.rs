@@ -89,11 +89,16 @@ impl AnsibleModule {
         }
     }
 
-    /// Shorthand for copying $content to a file at $dest.
-    pub fn file(content: String, dest: String) -> Self {
+    /// Creates a sudo file with the given content and name.
+    /// File will be validated with visudo after task is complete.
+    pub fn sudo_file(content: String, name: &'static str) -> Self {
         Self {
             name: "ansible.builtin.copy",
-            params: HashMap::from([("content", content), ("dest", dest)]),
+            params: HashMap::from([
+                ("content", content.to_string()),
+                ("dest", format!("/etc/sudoers.d/{name}")),
+                ("validate", "visudo -cf %s".to_string()),
+            ]),
         }
     }
 }
