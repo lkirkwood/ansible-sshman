@@ -8,12 +8,12 @@ Reads a yaml config file that lists users and which hosts to give them access to
 Generates a playbook and runs it with `ansible-playbook` or writes it to a file.
 The playbook creates accounts for each user on the hosts they have access to and adds their listed public key to their authorised list.
 
-This tool will never delete users or their data. Blocked users will simply be unable to login.
+This tool will never delete users or their data. Accounts will be created for users that aren't `blocked`.
 
 ### Roles
 
 Users can have one of four possible roles:
-+ `blocked` : Cannot access the hosts.
++ `blocked` : Cannot login using [publickey authentication](https://www.ssh.com/academy/ssh/public-key-authentication).
 + `user` : Normal user that cannot use sudo.
 + `sudoer` : Normal user that can use sudo.
 + `superuser` : User with UID 0 — equivalent to root.
