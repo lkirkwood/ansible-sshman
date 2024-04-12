@@ -64,7 +64,7 @@ impl SSHConfig {
                 .map(AnsiblePlay::create_user),
         );
 
-        plays.extend(AnsiblePlay::authorize_keys(&self.users));
+        plays.extend(self.users.iter().map(AnsiblePlay::authorize_keys));
 
         plays
     }
