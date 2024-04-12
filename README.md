@@ -7,7 +7,6 @@ Write a simple yaml file and let ansible set up SSH access to your servers.
 Reads a yaml config file that lists users and which hosts to give them access to.
 Generates a playbook and runs it with `ansible-playbook` or writes it to a file.
 The playbook creates accounts for each user on the hosts they have access to and adds their listed public key to their authorised list.
-
 This tool will never delete users or their data. Accounts will be created for users that aren't `blocked`.
 
 ### Roles
@@ -17,6 +16,16 @@ Users can have one of four possible roles:
 + `user` : Normal user that cannot use sudo.
 + `sudoer` : Normal user that can use sudo.
 + `superuser` : User with UID 0 — equivalent to root.
+
+### Details
+
+The first play of the playbook contains tasks for creating the groups this tool relies on.
++ The `sshman-user` group will be created with no special properties.
++ The `sshman-sudoer` group will be created alongside a file of the same name under `/etc/suoders.d/`. This group will have sudo permissions `ALL=ALL`.
+
+Next in the playbook will be a play for each user, creating their account on hosts they have access to (unless they are `blocked` - these users will not have accounts created for them).
+
+Finally, a play for each user authorizing their respective keys on hosts they have access to — or removing all keys, for `blocked` users.
 
 ## Config format
 
