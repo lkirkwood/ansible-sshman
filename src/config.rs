@@ -1,23 +1,42 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
-    hash::Hash,
-    iter::FromIterator,
-};
+use std::{fmt::Display, hash::Hash};
 
-use crate::{inventory::Inventory, model::SSHPlay};
+use crate::model::AnsiblePlay;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
+    Blocked,
     User,
     Sudoer,
     SuperUser,
 }
 
-/// Models a user in the config file.
+impl Role {
+    /// Returns the name of the group for a user with this role.
+    pub fn group(&self) -> &'static str {
+        match self {
+            Self::Blocked => "sshman-blocked",
+            Self::User => "sshman-user",
+            Self::Sudoer => "sshman-sudoer",
+            Self::SuperUser => "root",
+        }
+    }
+}
+
+impl Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Blocked => write!(f, "blocked user"),
+            Self::User => write!(f, "regular user"),
+            Self::Sudoer => write!(f, "sudo user"),
+            Self::SuperUser => write!(f, "super user"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
+/// Models a user in the config file.
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
@@ -25,62 +44,27 @@ pub struct SSHUser {
     pub role: Role,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 /// Models a config file.
 pub struct SSHConfig {
     /// The users defined in the config file.
-    pub users: HashMap<String, SSHUser>,
+    pub users: Vec<SSHUser>,
 }
 
 impl SSHConfig {
-    /// Parses an SSHConfig from some yaml.
-    pub fn from_str(content: &str) -> Result<SSHConfig, Box<dyn Error>> {
-        let list: Vec<SSHUser> = serde_yaml::from_str(content)?;
-        Ok(SSHConfig {
-            users: list
-                .into_iter()
-                .map(|usr| (usr.name.clone(), usr))
-                .collect(),
-        })
-    }
+    /// Creates a playbook from an SSHConfig.
+    pub fn playbook(&self) -> Vec<AnsiblePlay> {
+        let mut plays = vec![AnsiblePlay::create_groups()];
 
-    /// Returns a playbook that will apply this config to a given inventory.
-    pub fn apply(&self, inv: &Inventory) -> Result<String, Box<dyn Error>> {
-        let mut host_users = HashMap::new();
-        for user in self.users.values() {
-            for host in inv.get_pattern_hosts(&user.access) {
-                if !host_users.contains_key(host) {
-                    host_users.insert(host, HashSet::new());
-                }
-                host_users.get_mut(host).unwrap().insert(user.name.clone());
-            }
-        }
+        plays.extend(
+            self.users
+                .iter()
+                .filter(|usr| usr.role != Role::Blocked)
+                .map(AnsiblePlay::create_user),
+        );
 
-        let mut user_hosts = HashMap::new();
-        for (host, users) in host_users {
-            let mut user_hash = Vec::from_iter(users);
-            user_hash.sort();
-            if !user_hosts.contains_key(&user_hash) {
-                user_hosts.insert(user_hash.clone(), Vec::new());
-            }
-            user_hosts.get_mut(&user_hash).unwrap().push(host);
-        }
+        plays.extend(AnsiblePlay::authorize_keys(&self.users));
 
-        let mut plays = Vec::new();
-        for (users, hosts) in user_hosts {
-            let group = hosts.join(":");
-            plays.push(SSHPlay::set_accounts(
-                group.clone(),
-                users.iter().filter_map(|u| self.users.get(u)).collect(),
-            ));
-            plays.push(SSHPlay::set_user_pubkeys(
-                group.clone(),
-                users
-                    .into_iter()
-                    .map(|name| self.users.get(&name).unwrap())
-                    .collect(),
-            ));
-        }
-
-        Ok(serde_yaml::to_string(&plays)?)
+        plays
     }
 }
