@@ -17,14 +17,6 @@ impl AnsiblePlay {
             r#become: true,
             tasks: vec![
                 AnsibleTask {
-                    name: "Create regular user group.",
-                    module: AnsibleModule::groups(HashMap::from([(
-                        "name",
-                        Role::User.group().to_string(),
-                    )])),
-                    params: HashMap::new(),
-                },
-                AnsibleTask {
                     name: "Create sudoer group.",
                     module: AnsibleModule::groups(HashMap::from([(
                         "name",

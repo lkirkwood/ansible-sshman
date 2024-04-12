@@ -7,7 +7,6 @@ use crate::model::AnsiblePlay;
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     Blocked,
-    User,
     Sudoer,
     SuperUser,
 }
@@ -17,7 +16,6 @@ impl Role {
     pub fn group(&self) -> &'static str {
         match self {
             Self::Blocked => "sshman-blocked",
-            Self::User => "sshman-user",
             Self::Sudoer => "sshman-sudoer",
             Self::SuperUser => "root",
         }
@@ -28,7 +26,6 @@ impl Display for Role {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Blocked => write!(f, "blocked user"),
-            Self::User => write!(f, "regular user"),
             Self::Sudoer => write!(f, "sudo user"),
             Self::SuperUser => write!(f, "super user"),
         }

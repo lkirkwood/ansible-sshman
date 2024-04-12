@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_yaml::Value;
 
 /// Models an ansible play.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct AnsiblePlay {
     /// Name of the play.
     pub name: String,
@@ -17,19 +17,6 @@ pub struct AnsiblePlay {
     pub r#become: bool,
     /// The tasks in this play.
     pub tasks: Vec<AnsibleTask>,
-}
-
-impl Serialize for AnsiblePlay {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut play = serializer.serialize_map(Some(4))?;
-        play.serialize_entry("name", &self.name)?;
-        play.serialize_entry("hosts", &self.hosts)?;
-        play.serialize_entry("tasks", &self.tasks)?;
-        play.end()
-    }
 }
 
 #[derive(Debug)]
