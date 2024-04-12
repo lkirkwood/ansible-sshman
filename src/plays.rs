@@ -26,10 +26,7 @@ impl AnsiblePlay {
                 },
                 AnsibleTask {
                     name: "Set sudo permissions for sudoers.",
-                    module: AnsibleModule::sudo_file(
-                        format!("%{}   ALL=ALL", Role::Sudoer.group()),
-                        Role::Sudoer.group(),
-                    ),
+                    module: AnsibleModule::sudo_file(Role::Sudoer.group()),
                     params: HashMap::new(),
                 },
             ],

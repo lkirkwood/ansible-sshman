@@ -76,14 +76,16 @@ impl AnsibleModule {
         }
     }
 
-    /// Creates a sudo file with the given content and name.
-    /// File will be validated with visudo after task is complete.
-    pub fn sudo_file(content: String, name: &'static str) -> Self {
+    /// Creates a sudo file for the group, allowing them to use sudo, with the rootpw flag set.
+    pub fn sudo_file(group: &str) -> Self {
         Self {
             name: "ansible.builtin.copy",
             params: HashMap::from([
-                ("content", content.to_string()),
-                ("dest", format!("/etc/sudoers.d/{name}")),
+                (
+                    "content",
+                    format!("%{group} ALL=(ALL) ALL\nDefaults:%{group} rootpw"),
+                ),
+                ("dest", format!("/etc/sudoers.d/{group}")),
                 ("validate", "visudo -cf %s".to_string()),
             ]),
         }
