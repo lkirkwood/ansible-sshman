@@ -23,8 +23,7 @@ Users can have one of four possible roles:
 
 ### Details
 
-The first play of the playbook contains tasks for creating the groups this tool relies on.
-+ The `sshman-sudoer` group will be created alongside a file of the same name under `/etc/suoders.d/`. This group will have sudo permissions `ALL=ALL`.
+The first play of the playbook contains tasks for creating the `sshman-sudoer` group and authorizing members of this group to use sudo with the root password.
 
 Next in the playbook will be a play for each user, creating their account on hosts they have access to (unless they are `blocked` - these users will not have accounts created for them).
 
