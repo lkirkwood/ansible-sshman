@@ -1,6 +1,11 @@
 # ansible-sshman
 
-Write a simple yaml file and let ansible set up SSH access to your servers.
+Write a simple yaml file and let Ansible set up SSH access to your servers.
+
+## Requirements
+
++ Ansible
++ The `ansible.posix` collection (`ansible-galaxy collection install ansible.posix`)
 
 ## How it works
 
