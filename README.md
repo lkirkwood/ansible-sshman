@@ -7,9 +7,16 @@ Write a simple yaml file and let ansible set up SSH access to your servers.
 Reads a yaml config file that lists users and which hosts to give them access to.
 Generates a playbook and runs it with `ansible-playbook` or writes it to a file.
 The playbook creates accounts for each user on the hosts they have access to and adds their listed public key to their authorised list.
-It keeps track of accounts it has created, and disables them if they have been removed from the config.
 
-This tool will never delete users or their data.
+This tool will never delete users or their data. Blocked users will simply be unable to login.
+
+### Roles
+
+Users can have one of four possible roles:
++ `blocked` : Cannot access the hosts.
++ `user` : Normal user that cannot use sudo.
++ `sudoer` : Normal user that can use sudo.
++ `superuser` : User with UID 0 — equivalent to root.
 
 ## Config format
 
@@ -20,7 +27,7 @@ This tool will never delete users or their data.
     - public keys
     - the user may use to login.
   access: Ansible group pattern matching hosts this user should have access to.
-  sudoer: Whether this user should be able to use sudo on the hosts.
+  role: Controls the privileges a user has on the host. One of the roles listed above.
 ```
 
 ## Usage Help
