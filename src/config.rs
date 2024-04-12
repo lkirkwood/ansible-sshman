@@ -45,6 +45,7 @@ pub struct SSHUser {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 /// Models a config file.
 pub struct SSHConfig {
     /// The users defined in the config file.
