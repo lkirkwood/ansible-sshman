@@ -73,28 +73,28 @@ impl AnsiblePlay {
 
     /// Authorizes keys for a user.
     /// For blocked users this play can fail silently if they do not already have an account.
-    pub fn authorize_keys(usr: &SSHUser) -> Self {
+    pub fn authorize_keys(user: &SSHUser) -> Self {
         Self {
-            name: format!("Authorize keys for {}.", &usr.name),
-            hosts: usr.access.to_owned(),
+            name: format!("Authorize keys for {}.", &user.name),
+            hosts: user.access.to_owned(),
             r#become: true,
             gather_facts: false,
             tasks: vec![AnsibleTask {
                 name: "Authorize public key.",
                 module: AnsibleModule::keys(HashMap::from([
-                    ("user", usr.name.to_owned()),
-                    ("key", usr.pubkeys.join("\n")),
+                    ("user", user.name.to_owned()),
+                    ("key", user.pubkeys.join("\n")),
                     ("exclusive", "true".to_string()),
                     (
                         "state",
-                        if let Role::Blocked = usr.role {
+                        if let Role::Blocked = user.role {
                             "absent".to_string()
                         } else {
                             "present".to_string()
                         },
                     ),
                 ])),
-                params: if usr.role == Role::Blocked {
+                params: if user.role == Role::Blocked {
                     HashMap::from([("ignore_errors", Value::Bool(true))])
                 } else {
                     HashMap::new()
