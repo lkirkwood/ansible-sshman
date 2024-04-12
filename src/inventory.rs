@@ -72,4 +72,15 @@ impl Group {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use std::fs;
+
+    use super::Inventory;
+
+    #[test]
+    fn test_deserialize() {
+        let inv_file = fs::read_to_string("test/inventory").unwrap();
+        let inv: Inventory = serde_yaml::from_str(&inv_file).unwrap();
+        assert!(inv.groups.get("all").is_some());
+    }
+}
