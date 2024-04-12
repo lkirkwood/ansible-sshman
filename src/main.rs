@@ -43,7 +43,7 @@ enum Action {
 
 fn main() {
     let args = Args::parse();
-    let conf_content = fs::read_to_string(args.config).expect("Failed to read config file.");
+    let conf_content = fs::read_to_string(&args.config).expect("Failed to read config file.");
     let conf = config::SSHConfig::from_str(&conf_content).unwrap();
 
     let inv_cmd = Command::new("ansible-inventory")
