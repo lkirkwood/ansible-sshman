@@ -45,14 +45,14 @@ impl AnsiblePlay {
                 module: AnsibleModule::users(if Role::SuperUser == user.role {
                     HashMap::from([
                         ("name", user.name.to_owned()),
-                        ("group", user.role.group().to_string()),
+                        ("groups", user.role.group().to_string()),
                         ("non_unique", "true".to_string()),
                         ("uid", "0".to_string()),
                     ])
                 } else {
                     HashMap::from([
                         ("name", user.name.to_owned()),
-                        ("group", user.role.group().to_string()),
+                        ("groups", user.role.group().to_string()),
                     ])
                 }),
                 params: HashMap::new(),
