@@ -15,10 +15,6 @@ struct Args {
     #[clap(short, long, value_parser)]
     config: String,
 
-    /// Ansible inventory. Can be any source accepted by ansible-inventory.
-    #[clap(short, long, value_parser)]
-    inventory: String,
-
     /// What to do with the generated playbook.
     #[clap(subcommand)]
     command: Action,
@@ -56,9 +52,8 @@ fn main() {
                 .expect("Failed to write to temp file.");
 
             Command::new("ansible-playbook")
-                .args(["-i", &args.inventory])
-                .arg(outfile.path().to_string_lossy().to_string())
                 .args(playbook_args)
+                .arg(outfile.path().to_string_lossy().to_string())
                 .spawn()
                 .unwrap()
                 .wait()

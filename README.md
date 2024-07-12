@@ -46,7 +46,7 @@ Finally, a play for each user authorizing their respective keys on hosts they ha
 ```
 Tool for managing SSH access to machines with Ansible.
 
-Usage: ansible-sshman --config <CONFIG> --inventory <INVENTORY> <COMMAND>
+Usage: ansible-sshman --config <CONFIG> <COMMAND>
 
 Commands:
   run    Generates and runs the playbook immediately
@@ -55,7 +55,6 @@ Commands:
 
 Options:
   -c, --config <CONFIG>        Path to ssh config file
-  -i, --inventory <INVENTORY>  Path to Ansible inventory file
   -h, --help                   Print help
   -V, --version                Print version
 ```
