@@ -53,6 +53,7 @@ impl AnsiblePlay {
                     HashMap::from([
                         ("name", user.name.to_owned()),
                         ("groups", user.role.group().to_string()),
+                        ("password", "*".to_string()),
                     ])
                 }),
                 params: HashMap::new(),

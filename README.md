@@ -18,7 +18,7 @@ This tool will never delete users or their data. Accounts will be created for us
 
 Users can have one of four possible roles:
 + `blocked` : Cannot login using [publickey authentication](https://www.ssh.com/academy/ssh/public-key-authentication).
-+ `sudoer` : Normal user that can use sudo.
++ `sudoer` : Normal user that can use sudo. These users have a locked/disabled password.
 + `superuser` : User with UID 0 — equivalent to root.
 
 ### Details
