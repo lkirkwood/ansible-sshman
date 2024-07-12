@@ -1,0 +1,18 @@
+---
+- name: sudoerjoe
+  pubkeys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
+  access: 'sydney:melbourne:&staging'
+  role: sudoer
+
+- name: superuser
+  pubkeys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3YYRDSyInadd73js6DURXguj1/fV7Z8ovzUslda3mrPC5aFiXWY5ocMiUaN6zhVGVbt5VwC18Pmub2WrMBpbZ8FMdr1J10+pe2p0Z2vqszwgLZaemtorNqxgS25BEn3HS1gCFPhXgEf4Z2MDR0tReJoaPcp38LiV0hkOyPzYCdWC3KEDBRQKjuqjQSVx2iL5khEaouIWu2fkRngfZ1O5Z4WZT51iS5Gh6JnbeFZWDkft1rI1Dmh55qWeMyye+2A5irocwBi2DPEdH7H1Y4pRzG3/qjmys2f1KOABRhWMruiaFmEeS58p0IZYiUUcaYWN0Cm706viU2DmacnUfeWUIZ9PwaWg6i2NviPxsixV++vvbzdaBdb9e9g36clgyeRGdSGDGjH3j58L53kNDw8d4sKkHiu4uUip8OGLIuheWVCvpedCP+W9a/N08/unxI3iaX6hro6R5ScVcpFhlyhUnVFHy3x5FeckMo0jH2PA66nKjJJdlzlawpdnHz3ypeZc= superuser@company
+  access: '*'
+  role: superuser
+
+- name: igotfired
+  pubkeys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
+  access: '*'
+  role: blocked

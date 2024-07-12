@@ -2,6 +2,8 @@ mod config;
 mod error;
 mod model;
 mod plays;
+#[cfg(test)]
+mod tests;
 
 use clap::{Parser, Subcommand};
 use config::SSHConfig;
