@@ -40,24 +40,47 @@ impl AnsiblePlay {
             hosts: user.access.to_owned(),
             gather_facts: false,
             r#become: true,
-            tasks: vec![AnsibleTask {
-                name: "Create account.",
-                module: AnsibleModule::users(if Role::SuperUser == user.role {
-                    HashMap::from([
-                        ("name", user.name.to_owned()),
-                        ("groups", user.role.group().to_string()),
-                        ("non_unique", "true".to_string()),
-                        ("uid", "0".to_string()),
-                    ])
-                } else {
-                    HashMap::from([
-                        ("name", user.name.to_owned()),
-                        ("groups", user.role.group().to_string()),
-                        ("password", "*".to_string()),
-                    ])
-                }),
-                params: HashMap::new(),
-            }],
+            tasks: match user.role {
+                Role::SuperUser => vec![
+                    AnsibleTask {
+                        name: "Create root alias.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.to_owned()),
+                            ("groups", user.role.group().to_string()),
+                            ("non_unique", "true".to_string()),
+                            ("uid", "0".to_string()),
+                        ])),
+                        params: HashMap::new(),
+                    },
+                    AnsibleTask {
+                        name: "Remove root alias password.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.to_owned()),
+                            ("password", "*".to_string()),
+                        ])),
+                        params: HashMap::new(),
+                    },
+                ],
+                Role::Sudoer => vec![
+                    AnsibleTask {
+                        name: "Create sudoer account.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.to_owned()),
+                            ("groups", user.role.group().to_string()),
+                        ])),
+                        params: HashMap::new(),
+                    },
+                    AnsibleTask {
+                        name: "Remove sudoer account password.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.to_owned()),
+                            ("password", "*".to_string()),
+                        ])),
+                        params: HashMap::new(),
+                    },
+                ],
+                Role::Blocked => vec![],
+            },
         }
     }
 
@@ -77,7 +100,7 @@ impl AnsiblePlay {
                     ("exclusive", "true".to_string()),
                     (
                         "state",
-                        if let Role::Blocked = user.role {
+                        if user.role == Role::Blocked {
                             "absent".to_string()
                         } else {
                             "present".to_string()
