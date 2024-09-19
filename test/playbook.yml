@@ -13,27 +13,57 @@
         Defaults:%sshman-sudoer rootpw
       dest: /etc/sudoers.d/sshman-sudoer
       validate: visudo -cf %s
+  - name: Create nopass group.
+    ansible.builtin.group:
+      name: sshman-nopass
+  - name: Set sudo permissions for nopasss.
+    ansible.builtin.copy:
+      dest: /etc/sudoers.d/sshman-nopass
+      validate: visudo -cf %s
+      content: |
+        %sshman-nopass ALL=(ALL) ALL
+        Defaults:%sshman-nopass rootpw
 - name: Create accounts for sudoerjoe.
   hosts: sydney:melbourne:&staging
   gather_facts: false
   become: true
   tasks:
-  - name: Create account.
+  - name: Create sudoer account.
+    ansible.builtin.user:
+      groups: sshman-sudoer
+      name: sudoerjoe
+  - name: Remove sudoer account password.
     ansible.builtin.user:
       password: '*'
       name: sudoerjoe
-      groups: sshman-sudoer
+- name: Create accounts for nopasspetey.
+  hosts: melbourne
+  gather_facts: false
+  become: true
+  tasks:
+  - name: Create sudoer account.
+    ansible.builtin.user:
+      name: nopasspetey
+      groups: sshman-nopass
+  - name: Remove sudoer account password.
+    ansible.builtin.user:
+      password: '*'
+      name: nopasspetey
 - name: Create accounts for superuser.
   hosts: '*'
   gather_facts: false
   become: true
   tasks:
-  - name: Create account.
+  - name: Create root alias.
     ansible.builtin.user:
       uid: '0'
       name: superuser
       non_unique: 'true'
       groups: root
+  - name: Remove root alias password.
+    ansible.builtin.user:
+      name: superuser
+      password: '*'
 - name: Authorize keys for sudoerjoe.
   hosts: sydney:melbourne:&staging
   gather_facts: false
@@ -41,9 +71,20 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
+      exclusive: 'true'
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
       user: sudoerjoe
       state: present
-      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
+- name: Authorize keys for nopasspetey.
+  hosts: melbourne
+  gather_facts: false
+  become: true
+  tasks:
+  - name: Authorize public key.
+    ansible.posix.authorized_key:
+      state: present
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIARL4yy4L4t/nzjMHyBjeJJeXjb4kncXYOtS+w9I4Wrj lkirkwood@lkirkwood-desktop
+      user: nopasspetey
       exclusive: 'true'
 - name: Authorize keys for superuser.
   hosts: '*'
@@ -53,9 +94,9 @@
   - name: Authorize public key.
     ansible.posix.authorized_key:
       exclusive: 'true'
-      state: present
-      user: superuser
       key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3YYRDSyInadd73js6DURXguj1/fV7Z8ovzUslda3mrPC5aFiXWY5ocMiUaN6zhVGVbt5VwC18Pmub2WrMBpbZ8FMdr1J10+pe2p0Z2vqszwgLZaemtorNqxgS25BEn3HS1gCFPhXgEf4Z2MDR0tReJoaPcp38LiV0hkOyPzYCdWC3KEDBRQKjuqjQSVx2iL5khEaouIWu2fkRngfZ1O5Z4WZT51iS5Gh6JnbeFZWDkft1rI1Dmh55qWeMyye+2A5irocwBi2DPEdH7H1Y4pRzG3/qjmys2f1KOABRhWMruiaFmEeS58p0IZYiUUcaYWN0Cm706viU2DmacnUfeWUIZ9PwaWg6i2NviPxsixV++vvbzdaBdb9e9g36clgyeRGdSGDGjH3j58L53kNDw8d4sKkHiu4uUip8OGLIuheWVCvpedCP+W9a/N08/unxI3iaX6hro6R5ScVcpFhlyhUnVFHy3x5FeckMo0jH2PA66nKjJJdlzlawpdnHz3ypeZc= superuser@company
+      user: superuser
+      state: present
 - name: Authorize keys for igotfired.
   hosts: '*'
   gather_facts: false
@@ -63,8 +104,8 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
+      exclusive: 'true'
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
       state: absent
       user: igotfired
-      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
-      exclusive: 'true'
     ignore_errors: true
