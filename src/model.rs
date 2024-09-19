@@ -83,7 +83,7 @@ impl AnsibleModule {
     pub fn sudo_file(role: Role) -> Self {
         let group = role.group();
         let nopasswd = match role {
-            Role::Nopass => "NOSSPASSWD:",
+            Role::Nopass => "NOPASSWD:",
             _ => "",
         };
 
