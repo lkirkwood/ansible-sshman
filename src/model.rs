@@ -4,6 +4,8 @@ use serde::ser::SerializeMap;
 use serde::Serialize;
 use serde_yaml::Value;
 
+use crate::config::Role;
+
 /// Models an ansible play.
 #[derive(Debug, Serialize)]
 pub struct AnsiblePlay {
@@ -78,13 +80,19 @@ impl AnsibleModule {
 
     /// Creates a sudo file for the group, allowing them to use sudo, with the rootpw flag set.
     /// Validates with visudo.
-    pub fn sudo_file(group: &str) -> Self {
+    pub fn sudo_file(role: Role) -> Self {
+        let group = role.group();
+        let nopasswd = match role {
+            Role::Nopass => "NOSSPASSWD:",
+            _ => "",
+        };
+
         Self {
             name: "ansible.builtin.copy",
             params: HashMap::from([
                 (
                     "content",
-                    format!("%{group} ALL=(ALL) ALL\nDefaults:%{group} rootpw\n"),
+                    format!("%{group} ALL=(ALL) {nopasswd} ALL\nDefaults:%{group} rootpw\n"),
                 ),
                 ("dest", format!("/etc/sudoers.d/{group}")),
                 ("validate", "visudo -cf %s".to_string()),
