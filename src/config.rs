@@ -8,6 +8,7 @@ use crate::model::AnsiblePlay;
 pub enum Role {
     Blocked,
     Sudoer,
+    Nopass,
     SuperUser,
 }
 
@@ -17,6 +18,7 @@ impl Role {
         match self {
             Self::Blocked => "sshman-blocked",
             Self::Sudoer => "sshman-sudoer",
+            Self::Nopass => "sshman-nopass",
             Self::SuperUser => "root",
         }
     }
@@ -27,6 +29,7 @@ impl Display for Role {
         match self {
             Self::Blocked => write!(f, "blocked user"),
             Self::Sudoer => write!(f, "sudo user"),
+            Self::Nopass => write!(f, "passwordless sudo user"),
             Self::SuperUser => write!(f, "super user"),
         }
     }
