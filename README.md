@@ -26,7 +26,7 @@ Users can have one of four possible roles:
 
 The first play of the playbook contains tasks for creating the `sshman-sudoer` group and authorising members of this group to use sudo with the root password.
 
-After that, a similar play for creating the `sshman-nopass` group and authorising its members for passwordless sudo.
+After that there is a similar play for creating the `sshman-nopass` group and authorising its members for passwordless sudo.
 
 Next in the playbook will be a play for each user, creating their account on hosts they have access to (unless they are `blocked` - these users will not have accounts created for them).
 
