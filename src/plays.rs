@@ -26,7 +26,20 @@ impl AnsiblePlay {
                 },
                 AnsibleTask {
                     name: "Set sudo permissions for sudoers.",
-                    module: AnsibleModule::sudo_file(Role::Sudoer.group()),
+                    module: AnsibleModule::sudo_file(Role::Sudoer),
+                    params: HashMap::new(),
+                },
+                AnsibleTask {
+                    name: "Create nopass group.",
+                    module: AnsibleModule::groups(HashMap::from([(
+                        "name",
+                        Role::Nopass.group().to_string(),
+                    )])),
+                    params: HashMap::new(),
+                },
+                AnsibleTask {
+                    name: "Set sudo permissions for nopasss.",
+                    module: AnsibleModule::sudo_file(Role::Nopass),
                     params: HashMap::new(),
                 },
             ],
@@ -61,7 +74,7 @@ impl AnsiblePlay {
                         params: HashMap::new(),
                     },
                 ],
-                Role::Sudoer => vec![
+                Role::Sudoer | Role::Nopass => vec![
                     AnsibleTask {
                         name: "Create sudoer account.",
                         module: AnsibleModule::users(HashMap::from([
