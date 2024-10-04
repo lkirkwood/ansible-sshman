@@ -59,6 +59,7 @@ impl AnsiblePlay {
                         name: "Create root alias.",
                         module: AnsibleModule::users(HashMap::from([
                             ("name", user.name.to_owned()),
+                            ("group", user.role.group().to_string()),
                             ("groups", user.role.group().to_string()),
                             ("non_unique", "true".to_string()),
                             ("uid", "0".to_string()),
@@ -79,6 +80,7 @@ impl AnsiblePlay {
                         name: "Create sudoer account.",
                         module: AnsibleModule::users(HashMap::from([
                             ("name", user.name.to_owned()),
+                            ("group", user.role.group().to_string()),
                             ("groups", user.role.group().to_string()),
                         ])),
                         params: HashMap::new(),
