@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, hash::Hash};
+use std::{collections::HashMap, fmt::Display, hash::Hash};
 
 use crate::model::AnsiblePlay;
 
@@ -35,13 +35,12 @@ impl Display for Role {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 /// Models a user in the config file.
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
-    pub access: String,
-    pub role: Role,
+    pub access: HashMap<String, Role>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
