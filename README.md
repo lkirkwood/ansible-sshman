@@ -16,7 +16,7 @@ This tool will never delete users or their data. Accounts will be created for us
 
 ### Roles
 
-Users can have one of four possible roles:
+Users can have one of four possible roles in each access group:
 + `blocked` : Cannot login using [publickey authentication](https://www.ssh.com/academy/ssh/public-key-authentication).
 + `sudoer` : Normal user that can use sudo by entering the password for root. These users have a locked/disabled password.
 + `nopass` : Normal user that can use sudo without entering a password. These users have a locked/disabled password.
@@ -28,9 +28,9 @@ The first play of the playbook contains tasks for creating the `sshman-sudoer` g
 
 After that there is a similar play for creating the `sshman-nopass` group and authorising its members for passwordless sudo.
 
-Next in the playbook will be a play for each user, creating their account on hosts they have access to (unless they are `blocked` - these users will not have accounts created for them).
+Next in the playbook will be a play for each user access group, creating their account on hosts in the group with the specified role (unless that role is `blocked` - these users will not have accounts created for them).
 
-Finally, a play for each user authorising their respective keys on hosts they have access to — or removing all keys, for `blocked` users.
+Finally, a play for each user access group, authorising their respective keys on hosts in that group — or removing all keys, for `blocked` users.
 
 ## Config format
 
@@ -40,8 +40,8 @@ Finally, a play for each user authorising their respective keys on hosts they ha
     - Array of
     - public keys
     - the user may use to login.
-  access: Ansible group pattern matching hosts this user should have access to.
-  role: Controls the privileges a user has on the host. One of the roles listed above.
+  access: 
+    Ansible group pattern: Role for user on hosts in that group
 ```
 
 ## Usage Help
