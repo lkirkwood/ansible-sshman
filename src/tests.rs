@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use serde_yaml::Value;
 use std::fs;
 
