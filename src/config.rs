@@ -56,14 +56,9 @@ impl SSHConfig {
     pub fn playbook(&self) -> Vec<AnsiblePlay> {
         let mut plays = vec![AnsiblePlay::create_groups()];
 
-        plays.extend(
-            self.users
-                .iter()
-                .filter(|usr| usr.role != Role::Blocked)
-                .map(AnsiblePlay::create_user),
-        );
+        plays.extend(self.users.iter().flat_map(AnsiblePlay::create_user));
 
-        plays.extend(self.users.iter().map(AnsiblePlay::authorize_keys));
+        plays.extend(self.users.iter().flat_map(AnsiblePlay::authorize_keys));
 
         plays
     }
