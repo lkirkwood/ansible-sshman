@@ -88,7 +88,12 @@ impl AnsibleModule {
                 params: HashMap::from([
                     (
                         "content",
-                        format!("%{group} ALL=(ALL) NOPASSWD: ALL\nDefaults:%{group} rootpw !requiretty\n"),
+                        format!(
+                            "{}\n{}\n{}",
+                            format!("%{group} ALL=(ALL) NOPASSWD: ALL"),
+                            format!("Defaults:%{group} rootpw"),
+                            format!("Defaults:%{group} !requiretty"),
+                        ),
                     ),
                     ("dest", format!("/etc/sudoers.d/{group}")),
                     ("validate", "visudo -cf %s".to_string()),
@@ -99,13 +104,17 @@ impl AnsibleModule {
                 params: HashMap::from([
                     (
                         "content",
-                        format!("%{group} ALL=(ALL) ALL\nDefaults:%{group} rootpw\n"),
+                        format!(
+                            "{}\n{}",
+                            format!("%{group} ALL=(ALL) ALL"),
+                            format!("Defaults:%{group} rootpw"),
+                        ),
                     ),
                     ("dest", format!("/etc/sudoers.d/{group}")),
                     ("validate", "visudo -cf %s".to_string()),
                 ]),
             },
-            other => panic!("Creating sudo file for role {other}")
+            other => panic!("Creating sudo file for role {other}"),
         }
     }
 }
