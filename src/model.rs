@@ -82,21 +82,30 @@ impl AnsibleModule {
     /// Validates with visudo.
     pub fn sudo_file(role: Role) -> Self {
         let group = role.group();
-        let nopasswd = match role {
-            Role::Nopass => "NOPASSWD:",
-            _ => "",
-        };
-
-        Self {
-            name: "ansible.builtin.copy",
-            params: HashMap::from([
-                (
-                    "content",
-                    format!("%{group} ALL=(ALL) {nopasswd} ALL\nDefaults:%{group} rootpw\n"),
-                ),
-                ("dest", format!("/etc/sudoers.d/{group}")),
-                ("validate", "visudo -cf %s".to_string()),
-            ]),
+        match role {
+            Role::Nopass => Self {
+                name: "ansible.builtin.copy",
+                params: HashMap::from([
+                    (
+                        "content",
+                        format!("%{group} ALL=(ALL) NOPASSWD: ALL\nDefaults:%{group} rootpw !requiretty\n"),
+                    ),
+                    ("dest", format!("/etc/sudoers.d/{group}")),
+                    ("validate", "visudo -cf %s".to_string()),
+                ]),
+            },
+            Role::Sudoer => Self {
+                name: "ansible.builtin.copy",
+                params: HashMap::from([
+                    (
+                        "content",
+                        format!("%{group} ALL=(ALL) ALL\nDefaults:%{group} rootpw\n"),
+                    ),
+                    ("dest", format!("/etc/sudoers.d/{group}")),
+                    ("validate", "visudo -cf %s".to_string()),
+                ]),
+            },
+            other => panic!("Creating sudo file for role {other}")
         }
     }
 }
