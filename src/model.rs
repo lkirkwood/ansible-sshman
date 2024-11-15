@@ -89,7 +89,7 @@ impl AnsibleModule {
                     (
                         "content",
                         format!(
-                            "{}\n{}",
+                            "{}\n{}\n",
                             format!("%{group} ALL=(ALL) NOPASSWD: ALL"),
                             format!("Defaults:%{group} !requiretty"),
                         ),
@@ -104,7 +104,7 @@ impl AnsibleModule {
                     (
                         "content",
                         format!(
-                            "{}\n{}",
+                            "{}\n{}\n",
                             format!("%{group} ALL=(ALL) ALL"),
                             format!("Defaults:%{group} rootpw"),
                         ),
