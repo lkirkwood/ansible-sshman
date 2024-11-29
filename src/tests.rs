@@ -9,7 +9,7 @@ fn test_playbook_output() {
     let conf: SSHConfig =
         serde_yaml::from_str(&fs::read_to_string("test/config.yml").unwrap()).unwrap();
 
-    let actual_playbook = serde_yaml::to_value(conf.playbook()).unwrap();
+    let actual_playbook = serde_yaml::to_value(conf.playbook_apply()).unwrap();
 
     let expected_playbook: Value =
         serde_yaml::from_str(&fs::read_to_string("test/playbook.yml").unwrap()).unwrap();

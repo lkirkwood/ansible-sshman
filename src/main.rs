@@ -48,8 +48,8 @@ fn main() {
 
     match args.command {
         Action::Run { playbook_args } => {
-            let playbook =
-                serde_yaml::to_string(&conf.playbook()).expect("Failed to serialize playbook.");
+            let playbook = serde_yaml::to_string(&conf.playbook_apply())
+                .expect("Failed to serialize playbook.");
             let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
             outfile
                 .write_all(playbook.as_bytes())
@@ -60,7 +60,8 @@ fn main() {
         Action::Write { path } => {
             fs::write(
                 path,
-                &serde_yaml::to_string(&conf.playbook()).expect("Failed to serialize playbook."),
+                &serde_yaml::to_string(&conf.playbook_apply())
+                    .expect("Failed to serialize playbook."),
             )
             .expect("Failed to write playbook.");
         }

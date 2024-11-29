@@ -52,8 +52,8 @@ pub struct SSHConfig {
 }
 
 impl SSHConfig {
-    /// Creates a playbook from an SSHConfig.
-    pub fn playbook(&self) -> Vec<AnsiblePlay> {
+    /// Creates a playbook to apply an SSHConfig.
+    pub fn playbook_apply(&self) -> Vec<AnsiblePlay> {
         let mut plays = vec![AnsiblePlay::create_groups()];
 
         plays.extend(self.users.iter().flat_map(AnsiblePlay::create_user));
