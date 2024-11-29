@@ -8,7 +8,7 @@ mod tests;
 
 use clap::{Parser, Subcommand};
 use config::SSHConfig;
-use std::{fs, io::Write, process::Command};
+use std::{fs, io::Write, path::Path, process::Command};
 use tempfile::NamedTempFile;
 
 #[derive(Parser, Debug)]
@@ -45,27 +45,34 @@ fn main() {
     let conf_content = fs::read_to_string(&args.config).expect("Failed to read config file.");
     let conf: SSHConfig =
         serde_yaml::from_str(&conf_content).expect("Failed to parse config file.");
-    let playbook = serde_yaml::to_string(&conf.playbook()).expect("Failed to serialize playbook.");
 
     match args.command {
         Action::Run { playbook_args } => {
+            let playbook =
+                serde_yaml::to_string(&conf.playbook()).expect("Failed to serialize playbook.");
             let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
             outfile
                 .write_all(playbook.as_bytes())
-                .expect("Failed to write to temp file.");
+                .expect("Failed to write playbook to temp file.");
 
-            Command::new("ansible-playbook")
-                .args(playbook_args)
-                .arg(outfile.path().to_string_lossy().to_string())
-                .spawn()
-                .unwrap()
-                .wait()
-                .unwrap();
-
-            outfile.close().expect("Failed to remove temp file.");
+            run_playbook(&playbook_args, outfile.path()).expect("Failed to run playbook.");
         }
         Action::Write { path } => {
-            fs::write(path, &playbook).expect("Failed to write playbook.");
+            fs::write(
+                path,
+                &serde_yaml::to_string(&conf.playbook()).expect("Failed to serialize playbook."),
+            )
+            .expect("Failed to write playbook.");
         }
     }
+}
+
+fn run_playbook(args: &[String], path: &Path) -> anyhow::Result<()> {
+    Command::new("ansible-playbook")
+        .args(args)
+        .arg(path)
+        .spawn()?
+        .wait()?;
+
+    Ok(())
 }
