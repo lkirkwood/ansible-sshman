@@ -50,7 +50,7 @@ impl Serialize for AnsibleTask {
 /// The module to call for an AnsibleTask.
 pub struct AnsibleModule {
     pub name: &'static str,
-    pub params: HashMap<&'static str, String>,
+    pub params: HashMap<&'static str, Value>,
 }
 
 impl AnsibleModule {
@@ -58,7 +58,10 @@ impl AnsibleModule {
     pub fn groups(params: HashMap<&'static str, String>) -> Self {
         Self {
             name: "ansible.builtin.group",
-            params,
+            params: params
+                .into_iter()
+                .map(|(k, v)| (k, Value::String(v)))
+                .collect(),
         }
     }
 
@@ -66,7 +69,10 @@ impl AnsibleModule {
     pub fn users(params: HashMap<&'static str, String>) -> Self {
         Self {
             name: "ansible.builtin.user",
-            params,
+            params: params
+                .into_iter()
+                .map(|(k, v)| (k, Value::String(v)))
+                .collect(),
         }
     }
 
@@ -74,7 +80,10 @@ impl AnsibleModule {
     pub fn keys(params: HashMap<&'static str, String>) -> Self {
         Self {
             name: "ansible.posix.authorized_key",
-            params,
+            params: params
+                .into_iter()
+                .map(|(k, v)| (k, Value::String(v)))
+                .collect(),
         }
     }
 
@@ -88,15 +97,15 @@ impl AnsibleModule {
                 params: HashMap::from([
                     (
                         "content",
-                        format!(
+                        Value::String(format!(
                             "{}\n{}\n",
                             format!("%{group} ALL=(ALL) NOPASSWD: ALL"),
                             format!("Defaults:%{group} !requiretty"),
-                        ),
+                        )),
                     ),
-                    ("dest", format!("/etc/sudoers.d/{group}")),
-                    ("mode", "440".to_string()),
-                    ("validate", "visudo -cf %s".to_string()),
+                    ("dest", Value::String(format!("/etc/sudoers.d/{group}"))),
+                    ("mode", Value::String("440".to_string())),
+                    ("validate", Value::String("visudo -cf %s".to_string())),
                 ]),
             },
             Role::Sudoer => Self {
@@ -104,15 +113,15 @@ impl AnsibleModule {
                 params: HashMap::from([
                     (
                         "content",
-                        format!(
+                        Value::String(format!(
                             "{}\n{}\n",
                             format!("%{group} ALL=(ALL) ALL"),
                             format!("Defaults:%{group} rootpw"),
-                        ),
+                        )),
                     ),
-                    ("dest", format!("/etc/sudoers.d/{group}")),
-                    ("mode", "440".to_string()),
-                    ("validate", "visudo -cf %s".to_string()),
+                    ("dest", Value::String(format!("/etc/sudoers.d/{group}"))),
+                    ("mode", Value::String("440".to_string())),
+                    ("validate", Value::String("visudo -cf %s".to_string())),
                 ]),
             },
             other => panic!("Creating sudo file for role {other}"),
