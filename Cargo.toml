@@ -13,6 +13,7 @@ license = "LGPL-3.0-only"
 strip = "debuginfo"
 
 [dependencies]
+anyhow = "1.0.93"
 clap = { version = "4.5.4", features = ["derive"] }
 serde = {version = "1.0.197", features = ["derive"]}
 serde_yaml = "0.9.34"
