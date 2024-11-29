@@ -1,6 +1,7 @@
 mod config;
 mod error;
 mod model;
+mod modules;
 mod plays;
 #[cfg(test)]
 mod tests;
