@@ -7,7 +7,7 @@ description = "Tool for managing SSH access to machines with Ansible."
 repository = "https://github.com/lirkwood/ansible-sshman"
 keywords = ["ansible", "ssh", "cli", "network", "security"]
 categories = ["command-line-utilities", "config", "network-programming", "parsing", "cryptography"]
-license = "GPL-3.0-or-later"
+license = "LGPL-3.0-only"
 
 [profile.release]
 strip = "debuginfo"
