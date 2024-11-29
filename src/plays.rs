@@ -7,7 +7,7 @@ use crate::{
     model::{AnsibleModule, AnsiblePlay, AnsibleTask},
 };
 
-impl AnsiblePlay {
+impl<'a> AnsiblePlay<'a> {
     /// Returns a play which will create necessary groups on all hosts.
     pub fn create_groups() -> Self {
         Self {

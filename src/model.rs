@@ -6,7 +6,7 @@ use serde_yaml::Value;
 
 /// Models an ansible play.
 #[derive(Debug, Serialize)]
-pub struct AnsiblePlay {
+pub struct AnsiblePlay<'a> {
     /// Name of the play.
     pub name: String,
     /// Host pattern this play targets.
@@ -16,18 +16,18 @@ pub struct AnsiblePlay {
     /// Whether to execute the whole play as root.
     pub r#become: bool,
     /// The tasks in this play.
-    pub tasks: Vec<AnsibleTask>,
+    pub tasks: Vec<AnsibleTask<'a>>,
 }
 
 #[derive(Debug)]
 /// A single task in an AnsiblePlay.
-pub struct AnsibleTask {
+pub struct AnsibleTask<'a> {
     pub name: &'static str,
-    pub module: AnsibleModule,
+    pub module: AnsibleModule<'a>,
     pub params: HashMap<&'static str, Value>,
 }
 
-impl Serialize for AnsibleTask {
+impl<'a> Serialize for AnsibleTask<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -46,7 +46,7 @@ impl Serialize for AnsibleTask {
 
 #[derive(Debug)]
 /// The module to call for an AnsibleTask.
-pub struct AnsibleModule {
+pub struct AnsibleModule<'a> {
     pub name: &'static str,
-    pub params: HashMap<&'static str, Value>,
+    pub params: HashMap<&'a str, Value>,
 }

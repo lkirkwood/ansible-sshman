@@ -4,7 +4,7 @@ use serde_yaml::Value;
 
 use crate::{config::Role, model::AnsibleModule};
 
-impl AnsibleModule {
+impl<'a> AnsibleModule<'a> {
     /// Ansible module for manipulating groups.
     pub fn groups(params: HashMap<&'static str, String>) -> Self {
         Self {
