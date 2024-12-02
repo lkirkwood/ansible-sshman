@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_yaml::{Mapping, Value};
+use serde_yaml::Value;
 
 use crate::{
     config::{Role, SSHConfig, SSHUser},
@@ -169,7 +169,7 @@ impl<'a> AnsiblePlay<'a> {
         plays
     }
 
-    pub fn set_actual_pubkey_facts(conf: &'a SSHConfig) -> Vec<Self> {
+    pub fn set_actual_pubkey_facts() -> Vec<Self> {
         vec![AnsiblePlay {
             name: "Populate actual pubkey facts for all hosts".to_string(),
             hosts: "all".to_string(),
@@ -216,5 +216,51 @@ impl<'a> AnsiblePlay<'a> {
                 },
             ],
         }]
+    }
+
+    /// Validates the set of users on each host with authorized public keys against the config.
+    pub fn validate(conf: &'a SSHConfig) -> Vec<Self> {
+        let mut plays = vec![];
+        plays.extend(Self::set_desired_pubkey_facts(conf));
+        plays.extend(Self::set_actual_pubkey_facts());
+        plays.extend(vec![Self {
+            name: "Validate authorized keys".to_string(),
+            hosts: "all".to_string(),
+            gather_facts: false,
+            r#become: false,
+            tasks: vec![
+                AnsibleTask {
+                    name: "Compute differences in desired and actual pubkey lists",
+                    module: AnsibleModule::set_facts(HashMap::from([(
+                        "_pubkey_diff",
+                        "{{ _pubkey_diff | default({}) | combine({item.key: item.value | reject('in', desired_pubkeys[item.key] | default([]))}) }}"
+                            .into(),
+                    )])),
+                    params: HashMap::from([("loop", "{{ actual_pubkeys | dict2items }}".into())]),
+                },
+                AnsibleTask {
+                    name: "Filter pubkey diff list",
+                    module: AnsibleModule::set_facts(HashMap::from([(
+                        "pubkey_diff",
+                        "{{ pubkey_diff | default({}) | combine({item.key: item.value}) }}"
+                            .into(),
+                    )])),
+                    params: HashMap::from([
+                        ("loop", "{{ _pubkey_diff | dict2items }}".into()),
+                        ("when", "item.value | length > 0".into())
+                    ]),
+                },
+                 AnsibleTask {
+                       name: "Print extra users",
+                       module: AnsibleModule::debug("{{ actual_pubkeys[item.key] }}"),
+                       params: HashMap::from([
+                           ("loop", "{{ pubkey_diff | default({}) | dict2items }}".into()),
+                           ("failed_when", "pubkey_diff | default({}) | length > 0".into()),
+                       ]),
+                   },
+            ],
+        }]);
+
+        plays
     }
 }

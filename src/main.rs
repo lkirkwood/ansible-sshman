@@ -8,6 +8,7 @@ mod tests;
 
 use clap::{Parser, Subcommand};
 use config::SSHConfig;
+use model::AnsiblePlay;
 use std::{fs, io::Write, path::Path, process::Command};
 use tempfile::NamedTempFile;
 
@@ -38,6 +39,12 @@ enum Action {
         #[clap(value_parser)]
         path: String,
     },
+    /// Reports on public keys in accounts that aren't configured with sshman.
+    Validate {
+        /// Extra arguments to pass to ansible-playbook.
+        #[clap(last = true)]
+        playbook_args: Vec<String>,
+    },
 }
 
 fn main() {
@@ -64,6 +71,17 @@ fn main() {
                     .expect("Failed to serialize playbook."),
             )
             .expect("Failed to write playbook.");
+        }
+        Action::Validate { playbook_args } => {
+            let playbook = serde_yaml::to_string(&AnsiblePlay::validate(&conf))
+                .expect("Failed to serialize playbook.");
+
+            let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
+            outfile
+                .write_all(playbook.as_bytes())
+                .expect("Failed to write playbook to temp file.");
+
+            run_playbook(&playbook_args, outfile.path()).expect("Failed to run playbook.");
         }
     }
 }
