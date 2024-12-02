@@ -78,4 +78,35 @@ impl<'a> AnsibleModule<'a> {
             other => panic!("Creating sudo file for role {other}"),
         }
     }
+
+    /// Set some facts.
+    pub fn set_facts(facts: HashMap<&'a str, Value>) -> Self {
+        Self {
+            name: "ansible.builtin.set_fact",
+            params: facts,
+        }
+    }
+
+    /// Use the getent utility and register the result as facts.
+    pub fn getent(params: HashMap<&'a str, Value>) -> Self {
+        Self {
+            name: "ansible.builtin.getent",
+            params,
+        }
+    }
+
+    /// Slurps a file from a remote node.
+    pub fn slurp(path: String) -> Self {
+        Self {
+            name: "ansible.builtin.slurp",
+            params: HashMap::from([("src", Value::String(path))]),
+        }
+    }
+
+    pub fn debug(msg: &str) -> Self {
+        Self {
+            name: "ansible.builtin.debug",
+            params: HashMap::from([("msg", msg.into())]),
+        }
+    }
 }
