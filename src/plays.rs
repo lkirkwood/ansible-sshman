@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use serde_yaml::Value;
+use serde_yaml::{Mapping, Value};
 
 use crate::{
-    config::{Role, SSHUser},
+    config::{Role, SSHConfig, SSHUser},
     model::{AnsibleModule, AnsiblePlay, AnsibleTask},
 };
 
@@ -135,5 +135,86 @@ impl<'a> AnsiblePlay<'a> {
                 }],
             })
             .collect()
+    }
+
+    pub fn set_desired_pubkey_facts(conf: &'a SSHConfig) -> Vec<Self> {
+        let mut plays = vec![];
+        for user in &conf.users {
+            for (group, _) in &user.access {
+                plays.push(AnsiblePlay {
+                    name: format!(
+                        "Populate desired pubkey facts for {} on hosts in group {group}",
+                        user.name
+                    ),
+                    hosts: group.to_string(),
+                    gather_facts: false,
+                    r#become: false,
+                    tasks: vec![AnsibleTask {
+                        name: "Populate desired pubkey facts",
+                        module: AnsibleModule::set_facts(HashMap::from([(
+                            "desired_pubkeys",
+                            format!(
+                                "{{{{ desired_pubkeys | default({{}}) | combine({{\"{}\": [\"{}\"]}}) }}}}",
+                                user.name,
+                                user.pubkeys.join("\", \"")
+                            )
+                            .into(),
+                        )])),
+                        params: HashMap::new(),
+                    }],
+                })
+            }
+        }
+
+        plays
+    }
+
+    pub fn set_actual_pubkey_facts(conf: &'a SSHConfig) -> Vec<Self> {
+        vec![AnsiblePlay {
+            name: "Populate actual pubkey facts for all hosts".to_string(),
+            hosts: "all".to_string(),
+            gather_facts: false,
+            r#become: false,
+            tasks: vec![
+                AnsibleTask {
+                    name: "Read contents of passwd db",
+                    module: AnsibleModule::getent(HashMap::from([("database", "passwd".into())])),
+                    params: HashMap::new(),
+                }, // Read pubkey file for each user
+                AnsibleTask {
+                    name: "Append username to passwd items",
+                    module: AnsibleModule::set_facts(HashMap::from([(
+                        "getent_passwd",
+                        "{{ getent_passwd | combine({item.key: item.value + [item.key]}) }}".into(),
+                    )])),
+                    params: HashMap::from([
+                        ("loop", "{{ getent_passwd | dict2items }}".into()),
+                        ("delegate_to", "localhost".into()),
+                        ("run_once", true.into()),
+                    ]),
+                },
+                AnsibleTask {
+                    name: "Read authorized_keys for each user",
+                    module: AnsibleModule::slurp("{{ item[4] }}/.ssh/authorized_keys".to_string()),
+                    params: HashMap::from([
+                        ("loop", "{{ getent_passwd.values() }}".into()),
+                        ("register", "pubkey_files".into()),
+                        ("ignore_errors", true.into()),
+                        ("become", true.into()),
+                    ]),
+                },
+                AnsibleTask {
+                    name: "Populate actual pubkey facts",
+                    module: AnsibleModule::set_facts(HashMap::from([(
+                        "actual_pubkeys",
+                        "{{ actual_pubkeys | default({}) | combine({item.item[-1]: item.content | trim | b64decode | split('\n') | reject('equalto', '') }) }}".into(),
+                    )])),
+                    params: HashMap::from([
+                        ("loop", "{{ pubkey_files.results }}".into()),
+                        ("when", "item.failed != True".into()),
+                    ]),
+                },
+            ],
+        }]
     }
 }
