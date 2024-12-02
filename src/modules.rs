@@ -49,9 +49,7 @@ impl<'a> AnsibleModule<'a> {
                     (
                         "content",
                         Value::String(format!(
-                            "{}\n{}\n",
-                            format!("%{group} ALL=(ALL) NOPASSWD: ALL"),
-                            format!("Defaults:%{group} !requiretty"),
+                            "%{group} ALL=(ALL) NOPASSWD: ALL\nDefaults:%{group} !requiretty\n"
                         )),
                     ),
                     ("dest", format!("/etc/sudoers.d/{group}").into()),
@@ -65,9 +63,7 @@ impl<'a> AnsibleModule<'a> {
                     (
                         "content",
                         Value::String(format!(
-                            "{}\n{}\n",
-                            format!("%{group} ALL=(ALL) ALL"),
-                            format!("Defaults:%{group} rootpw"),
+                            "%{group} ALL=(ALL) ALL\nDefaults:%{group} rootpw\n"
                         )),
                     ),
                     ("dest", format!("/etc/sudoers.d/{group}").into()),

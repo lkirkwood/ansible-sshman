@@ -67,7 +67,7 @@ fn main() {
         Action::Write { path } => {
             fs::write(
                 path,
-                &serde_yaml::to_string(&conf.playbook_apply())
+                serde_yaml::to_string(&conf.playbook_apply())
                     .expect("Failed to serialize playbook."),
             )
             .expect("Failed to write playbook.");

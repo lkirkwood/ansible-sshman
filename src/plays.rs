@@ -140,7 +140,7 @@ impl<'a> AnsiblePlay<'a> {
     pub fn set_desired_pubkey_facts(conf: &'a SSHConfig) -> Vec<Self> {
         let mut plays = vec![];
         for user in &conf.users {
-            for (group, _) in &user.access {
+            for group in user.access.keys() {
                 plays.push(AnsiblePlay {
                     name: format!(
                         "Populate desired pubkey facts for {} on hosts in group {group}",
