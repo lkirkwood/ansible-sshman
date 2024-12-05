@@ -195,7 +195,7 @@ impl<'a> AnsiblePlay<'a> {
                 },
                 AnsibleTask {
                     name: "Read authorized_keys for each user",
-                    module: AnsibleModule::slurp("{{ item[4] }}/.ssh/authorized_keys".to_string()),
+                    module: AnsibleModule::slurp("{{ item[4] }}/.ssh/authorized_keys"),
                     params: HashMap::from([
                         ("loop", "{{ getent_passwd.values() }}".into()),
                         ("register", "pubkey_files".into()),

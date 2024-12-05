@@ -92,10 +92,10 @@ impl<'a> AnsibleModule<'a> {
     }
 
     /// Slurps a file from a remote node.
-    pub fn slurp(path: String) -> Self {
+    pub fn slurp(path: &str) -> Self {
         Self {
             name: "ansible.builtin.slurp",
-            params: HashMap::from([("src", Value::String(path))]),
+            params: HashMap::from([("src", path.into())]),
         }
     }
 
