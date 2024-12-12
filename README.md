@@ -41,7 +41,14 @@ Finally, a play for each user access group, authorising their respective keys on
     - public keys
     - the user may use to login.
   access: 
-    Ansible group pattern: Role for user on hosts in that group
+    - hosts: Ansible host pattern e.g. "production:&sydney"
+      role: Some role as defined above e.g. "sudoer"
+      groups:
+        - An optional list of the groups a user should be in.
+        - The user won't be removed from their groups if this key is not specified
+        - or if the list is empty.
+      seuser: An optional SELinux user to assign to the account e.g. "sysadm_u". Wont be changed if the user already exists.
+      
 ```
 
 ## Usage Help
