@@ -17,13 +17,10 @@ impl<'a> AnsibleModule<'a> {
     }
 
     /// Ansible module for manipulating users.
-    pub fn users(params: HashMap<&'static str, String>) -> Self {
+    pub fn users(params: HashMap<&'static str, Value>) -> Self {
         Self {
             name: "ansible.builtin.user",
-            params: params
-                .into_iter()
-                .map(|(k, v)| (k, Value::String(v)))
-                .collect(),
+            params,
         }
     }
 

@@ -50,29 +50,35 @@ impl<'a> AnsiblePlay<'a> {
     pub fn create_user(user: &SSHUser) -> Vec<Self> {
         user.access
             .iter()
-            .map(|(hosts, role)| Self {
+            .map(|stmt| Self {
                 name: format!("Create accounts for {}.", user.name),
-                hosts: hosts.to_string(),
+                hosts: stmt.hosts.clone(),
                 gather_facts: false,
                 r#become: true,
-                tasks: match role {
+                tasks: match stmt.role {
                     Role::SuperUser => vec![
                         AnsibleTask {
                             name: "Create root alias.",
                             module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.to_owned()),
-                                ("group", role.group().to_string()),
-                                ("groups", role.group().to_string()),
-                                ("non_unique", "true".to_string()),
-                                ("uid", "0".to_string()),
+                                ("name", user.name.clone().into()),
+                                (
+                                    "groups",
+                                    stmt.groups
+                                        .iter()
+                                        .chain(vec![&stmt.role.group().to_string()])
+                                        .map(|grp| Value::String(grp.to_string()))
+                                        .collect(),
+                                ),
+                                ("non_unique", "true".into()),
+                                ("uid", "0".into()),
                             ])),
                             params: HashMap::new(),
                         },
                         AnsibleTask {
                             name: "Remove root alias password.",
                             module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.to_owned()),
-                                ("password", "*".to_string()),
+                                ("name", user.name.clone().into()),
+                                ("password", "*".into()),
                             ])),
                             params: HashMap::new(),
                         },
@@ -81,17 +87,23 @@ impl<'a> AnsiblePlay<'a> {
                         AnsibleTask {
                             name: "Create sudoer account.",
                             module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.to_owned()),
-                                ("group", role.group().to_string()),
-                                ("groups", role.group().to_string()),
+                                ("name", user.name.clone().into()),
+                                (
+                                    "groups",
+                                    stmt.groups
+                                        .iter()
+                                        .chain(vec![&stmt.role.group().to_string()])
+                                        .map(|grp| Value::String(grp.to_string()))
+                                        .collect(),
+                                ),
                             ])),
                             params: HashMap::new(),
                         },
                         AnsibleTask {
                             name: "Remove sudoer account password.",
                             module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.to_owned()),
-                                ("password", "*".to_string()),
+                                ("name", user.name.clone().into()),
+                                ("password", "*".into()),
                             ])),
                             params: HashMap::new(),
                         },
@@ -107,9 +119,9 @@ impl<'a> AnsiblePlay<'a> {
     pub fn authorize_keys(user: &SSHUser) -> Vec<Self> {
         user.access
             .iter()
-            .map(|(hosts, role)| Self {
+            .map(|stmt| Self {
                 name: format!("Authorize keys for {}.", &user.name),
-                hosts: hosts.to_string(),
+                hosts: stmt.hosts.clone(),
                 r#become: true,
                 gather_facts: false,
                 tasks: vec![AnsibleTask {
@@ -120,14 +132,14 @@ impl<'a> AnsiblePlay<'a> {
                         ("exclusive", "true".to_string()),
                         (
                             "state",
-                            if *role == Role::Blocked {
+                            if stmt.role == Role::Blocked {
                                 "absent".to_string()
                             } else {
                                 "present".to_string()
                             },
                         ),
                     ])),
-                    params: if *role == Role::Blocked {
+                    params: if stmt.role == Role::Blocked {
                         HashMap::from([("ignore_errors", Value::Bool(true))])
                     } else {
                         HashMap::new()
@@ -140,13 +152,13 @@ impl<'a> AnsiblePlay<'a> {
     pub fn set_desired_pubkey_facts(conf: &'a SSHConfig) -> Vec<Self> {
         let mut plays = vec![];
         for user in &conf.users {
-            for group in user.access.keys() {
+            for stmt in &user.access {
                 plays.push(AnsiblePlay {
                     name: format!(
-                        "Populate desired pubkey facts for {} on hosts in group {group}",
+                        "Populate desired pubkey facts for {} on hosts in group {}", stmt.hosts,
                         user.name
                     ),
-                    hosts: group.to_string(),
+                    hosts: stmt.hosts.clone(),
                     gather_facts: false,
                     r#become: false,
                     tasks: vec![AnsibleTask {

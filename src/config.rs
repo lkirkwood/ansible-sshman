@@ -36,11 +36,20 @@ impl Display for Role {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct AccessStmt {
+    pub hosts: String,
+    pub role: Role,
+    #[serde(default)]
+    pub groups: Vec<String>,
+    pub seuser: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 /// Models a user in the config file.
 pub struct SSHUser {
     pub name: String,
     pub pubkeys: Vec<String>,
-    pub access: HashMap<String, Role>,
+    pub access: Vec<AccessStmt>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
