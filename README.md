@@ -47,8 +47,9 @@ Finally, a play for each user access group, authorising their respective keys on
         - An optional list of the groups a user should be in.
         - The user won't be removed from their groups if this key is not specified
         - or if the list is empty.
-      seuser: An optional SELinux user to assign to the account e.g. "sysadm_u". Wont be changed if the user already exists.
-      
+      seuser: >-
+        An optional SELinux user to assign to the account e.g. "sysadm_u". 
+        Nothing will be changed if the user already exists.
 ```
 
 ## Usage Help
