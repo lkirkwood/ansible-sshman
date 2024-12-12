@@ -54,44 +54,17 @@ fn main() {
         serde_yaml::from_str(&conf_content).expect("Failed to parse config file.");
 
     match args.command {
-        Action::Run { playbook_args } => {
-            let playbook = serde_yaml::to_string(&conf.playbook_apply())
-                .expect("Failed to serialize playbook.");
-            let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
-            outfile
-                .write_all(playbook.as_bytes())
-                .expect("Failed to write playbook to temp file.");
-
-            run_playbook(&playbook_args, outfile.path()).expect("Failed to run playbook.");
-        }
+        Action::Run { playbook_args } => run_plays(&conf.create_accounts(), &playbook_args),
         Action::Write { path } => {
             fs::write(
                 path,
-                serde_yaml::to_string(&conf.playbook_apply())
+                serde_yaml::to_string(&conf.create_accounts())
                     .expect("Failed to serialize playbook."),
             )
             .expect("Failed to write playbook.");
         }
         Action::Validate { playbook_args } => {
-            let playbook = serde_yaml::to_string(&AnsiblePlay::validate(&conf))
-                .expect("Failed to serialize playbook.");
-
-            let mut outfile = NamedTempFile::new().expect("Failed to create temp file.");
-            outfile
-                .write_all(playbook.as_bytes())
-                .expect("Failed to write playbook to temp file.");
-
-            run_playbook(&playbook_args, outfile.path()).expect("Failed to run playbook.");
+            run_plays(&AnsiblePlay::validate(&conf), &playbook_args)
         }
     }
-}
-
-fn run_playbook(args: &[String], path: &Path) -> anyhow::Result<()> {
-    Command::new("ansible-playbook")
-        .args(args)
-        .arg(path)
-        .spawn()?
-        .wait()?;
-
-    Ok(())
 }
