@@ -25,3 +25,20 @@ impl Display for InvalidConfigError {
         write!(f, "Invalid SSH config file; {}", self.message)
     }
 }
+
+#[derive(Debug)]
+pub struct InvOutputParseError {
+    pub message: String,
+}
+
+impl Error for InvOutputParseError {}
+
+impl Display for InvOutputParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Failed to parse ansible-inventory output; {}",
+            self.message
+        )
+    }
+}

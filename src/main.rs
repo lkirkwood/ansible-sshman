@@ -3,14 +3,15 @@ mod error;
 mod model;
 mod modules;
 mod plays;
+mod subprocess;
 #[cfg(test)]
 mod tests;
 
 use clap::{Parser, Subcommand};
 use config::SSHConfig;
 use model::AnsiblePlay;
-use std::{fs, io::Write, path::Path, process::Command};
-use tempfile::NamedTempFile;
+use std::fs;
+use subprocess::run_plays;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -45,6 +46,8 @@ enum Action {
         #[clap(last = true)]
         playbook_args: Vec<String>,
     },
+    /// Displays a report mapping users to their individual host access.
+    Display,
 }
 
 fn main() {
@@ -63,6 +66,7 @@ fn main() {
             )
             .expect("Failed to write playbook.");
         }
+        Action::Display => conf.display(),
         Action::Validate { playbook_args } => {
             run_plays(&AnsiblePlay::validate(&conf), &playbook_args)
         }

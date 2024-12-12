@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display, hash::Hash};
+use std::{collections::HashMap, fmt::Display, hash::Hash, process::exit};
 
-use crate::model::AnsiblePlay;
+use crate::{model::AnsiblePlay, subprocess};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -61,8 +61,8 @@ pub struct SSHConfig {
 }
 
 impl SSHConfig {
-    /// Creates a playbook to apply an SSHConfig.
-    pub fn playbook_apply(&self) -> Vec<AnsiblePlay> {
+    /// Creates a playbook to create accounts.
+    pub fn create_accounts(&self) -> Vec<AnsiblePlay> {
         let mut plays = vec![AnsiblePlay::create_groups()];
 
         plays.extend(self.users.iter().flat_map(AnsiblePlay::create_user));
@@ -70,5 +70,50 @@ impl SSHConfig {
         plays.extend(self.users.iter().flat_map(AnsiblePlay::authorize_keys));
 
         plays
+    }
+
+    pub fn display(&self) {
+        let mut pattern_hosts = HashMap::new();
+
+        for user in &self.users {
+            println!("# User: {}", user.name);
+            for stmt in &user.access {
+                println!("  host pattern: {}", stmt.hosts);
+                println!("  role: {}", stmt.role);
+
+                if !stmt.groups.is_empty() {
+                    println!("  groups: {}", stmt.groups.join(", "));
+                }
+
+                if let Some(seuser) = &stmt.seuser {
+                    println!("  seuser: {seuser}");
+                }
+
+                let hosts = if let Some(hosts_) = pattern_hosts.get(&stmt.hosts) {
+                    hosts_
+                } else {
+                    match subprocess::list_hosts(&stmt.hosts) {
+                        Ok(hosts_) => {
+                            pattern_hosts.insert(&stmt.hosts, hosts_);
+                            pattern_hosts.get(&stmt.hosts).unwrap()
+                        }
+                        Err(err) => {
+                            println!("{err}");
+                            exit(1)
+                        }
+                    }
+                };
+
+                println!("\n## Hosts:");
+                for (host, hostname_) in hosts {
+                    print!("  + {host}");
+                    if let Some(hostname) = hostname_ {
+                        print!(" -- ({hostname})");
+                    }
+                    println!();
+                }
+                println!();
+            }
+        }
     }
 }
