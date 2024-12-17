@@ -38,7 +38,7 @@ fn run_playbook(args: &[String], path: &Path) -> anyhow::Result<()> {
 /// Returns a list of hosts and their ansible_host var if set.
 pub fn list_hosts(pattern: &str) -> anyhow::Result<HashMap<String, Option<String>>> {
     let output = Command::new("ansible-inventory")
-        .args(vec!["--list", "--yaml", &format!("--limit {pattern}")])
+        .args(vec!["--list", "--yaml", "--limit", pattern])
         .output()?;
 
     let mut hosts: HashMap<String, Option<String>> = HashMap::new();
