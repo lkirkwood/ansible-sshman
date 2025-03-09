@@ -56,58 +56,40 @@ impl<'a> AnsiblePlay<'a> {
                 gather_facts: false,
                 r#become: true,
                 tasks: match stmt.role {
-                    Role::SuperUser => vec![
-                        AnsibleTask {
-                            name: "Create root alias.",
-                            module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.clone().into()),
-                                (
-                                    "groups",
-                                    stmt.groups
-                                        .iter()
-                                        .chain(vec![&stmt.role.group().to_string()])
-                                        .map(|grp| Value::String(grp.to_string()))
-                                        .collect(),
-                                ),
-                                ("non_unique", "true".into()),
-                                ("uid", "0".into()),
-                            ])),
-                            params: HashMap::new(),
-                        },
-                        AnsibleTask {
-                            name: "Remove root alias password.",
-                            module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.clone().into()),
-                                ("password", "*".into()),
-                            ])),
-                            params: HashMap::new(),
-                        },
-                    ],
-                    Role::Sudoer | Role::Nopass => vec![
-                        AnsibleTask {
-                            name: "Create sudoer account.",
-                            module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.clone().into()),
-                                (
-                                    "groups",
-                                    stmt.groups
-                                        .iter()
-                                        .chain(vec![&stmt.role.group().to_string()])
-                                        .map(|grp| Value::String(grp.to_string()))
-                                        .collect(),
-                                ),
-                            ])),
-                            params: HashMap::new(),
-                        },
-                        AnsibleTask {
-                            name: "Remove sudoer account password.",
-                            module: AnsibleModule::users(HashMap::from([
-                                ("name", user.name.clone().into()),
-                                ("password", "*".into()),
-                            ])),
-                            params: HashMap::new(),
-                        },
-                    ],
+                    Role::SuperUser => vec![AnsibleTask {
+                        name: "Create root alias.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.clone().into()),
+                            (
+                                "groups",
+                                stmt.groups
+                                    .iter()
+                                    .chain(vec![&stmt.role.group().to_string()])
+                                    .map(|grp| Value::String(grp.to_string()))
+                                    .collect(),
+                            ),
+                            ("non_unique", "true".into()),
+                            ("uid", "0".into()),
+                            ("password", "*".into()),
+                        ])),
+                        params: HashMap::new(),
+                    }],
+                    Role::Sudoer | Role::Nopass => vec![AnsibleTask {
+                        name: "Create sudoer account.",
+                        module: AnsibleModule::users(HashMap::from([
+                            ("name", user.name.clone().into()),
+                            ("password", "*".into()),
+                            (
+                                "groups",
+                                stmt.groups
+                                    .iter()
+                                    .chain(vec![&stmt.role.group().to_string()])
+                                    .map(|grp| Value::String(grp.to_string()))
+                                    .collect(),
+                            ),
+                        ])),
+                        params: HashMap::new(),
+                    }],
                     Role::Blocked => vec![],
                 },
             })
