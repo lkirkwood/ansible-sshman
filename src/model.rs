@@ -27,7 +27,7 @@ pub struct AnsibleTask<'a> {
     pub params: HashMap<&'static str, Value>,
 }
 
-impl<'a> Serialize for AnsibleTask<'a> {
+impl Serialize for AnsibleTask<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

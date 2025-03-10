@@ -22,7 +22,7 @@ pub fn run_plays(plays: &[AnsiblePlay], args: &[String]) {
         )
         .expect("Failed to write playbook to temp file.");
 
-    run_playbook(&args, outfile.path()).expect("Failed to run playbook.");
+    run_playbook(args, outfile.path()).expect("Failed to run playbook.");
 }
 
 fn run_playbook(args: &[String], path: &Path) -> anyhow::Result<()> {
@@ -46,7 +46,7 @@ pub fn list_hosts(pattern: &str) -> anyhow::Result<HashMap<String, Option<String
     for hostvar_map in group_hosts(&output.stdout)? {
         for (host_val, vars) in hostvar_map {
             match host_val {
-                Value::String(string) => match hosts.entry(string.into()) {
+                Value::String(string) => match hosts.entry(string) {
                     Entry::Occupied(mut entry) => {
                         if entry.get().is_none() {
                             entry.insert(hostname_from_vars(vars));
