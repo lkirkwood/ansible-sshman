@@ -12,7 +12,7 @@ impl<'a> AnsiblePlay<'a> {
     /// Returns a play which will create necessary groups on all hosts.
     pub fn create_groups<T: Iterator<Item = String>>(additional: T) -> Self {
         let additional_tasks = additional.unique().map(|grp| AnsibleTask {
-            name: "Create sudoer group.",
+            name: "Create additional group.",
             module: AnsibleModule::groups(HashMap::from([("name", grp)])),
             params: HashMap::new(),
         });
