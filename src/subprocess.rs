@@ -22,7 +22,7 @@ pub fn run_plays(plays: &[AnsiblePlay], args: &[String]) {
         )
         .expect("Failed to write playbook to temp file.");
 
-    run_playbook(args, outfile.path()).expect("Failed to run playbook.");
+    run_playbook(args, outfile.path()).expect("Failed to run playbook");
 }
 
 fn run_playbook(args: &[String], path: &Path) -> anyhow::Result<()> {
