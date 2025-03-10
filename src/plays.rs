@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use serde_yaml::Value;
 
 use crate::{
@@ -9,40 +10,48 @@ use crate::{
 
 impl<'a> AnsiblePlay<'a> {
     /// Returns a play which will create necessary groups on all hosts.
-    pub fn create_groups() -> Self {
+    pub fn create_groups<T: Iterator<Item = String>>(additional: T) -> Self {
+        let additional_tasks = additional.unique().map(|grp| AnsibleTask {
+            name: "Create sudoer group.",
+            module: AnsibleModule::groups(HashMap::from([("name", grp)])),
+            params: HashMap::new(),
+        });
+
+        let all_tasks = additional_tasks.chain(vec![
+            AnsibleTask {
+                name: "Create sudoer group.",
+                module: AnsibleModule::groups(HashMap::from([(
+                    "name",
+                    Role::Sudoer.group().to_string(),
+                )])),
+                params: HashMap::new(),
+            },
+            AnsibleTask {
+                name: "Set sudo permissions for sudoers.",
+                module: AnsibleModule::sudo_file(Role::Sudoer),
+                params: HashMap::new(),
+            },
+            AnsibleTask {
+                name: "Create nopass group.",
+                module: AnsibleModule::groups(HashMap::from([(
+                    "name",
+                    Role::Nopass.group().to_string(),
+                )])),
+                params: HashMap::new(),
+            },
+            AnsibleTask {
+                name: "Set sudo permissions for nopasss.",
+                module: AnsibleModule::sudo_file(Role::Nopass),
+                params: HashMap::new(),
+            },
+        ]);
+
         Self {
             name: "Create groups.".to_string(),
             hosts: "all".to_string(),
             gather_facts: false,
             r#become: true,
-            tasks: vec![
-                AnsibleTask {
-                    name: "Create sudoer group.",
-                    module: AnsibleModule::groups(HashMap::from([(
-                        "name",
-                        Role::Sudoer.group().to_string(),
-                    )])),
-                    params: HashMap::new(),
-                },
-                AnsibleTask {
-                    name: "Set sudo permissions for sudoers.",
-                    module: AnsibleModule::sudo_file(Role::Sudoer),
-                    params: HashMap::new(),
-                },
-                AnsibleTask {
-                    name: "Create nopass group.",
-                    module: AnsibleModule::groups(HashMap::from([(
-                        "name",
-                        Role::Nopass.group().to_string(),
-                    )])),
-                    params: HashMap::new(),
-                },
-                AnsibleTask {
-                    name: "Set sudo permissions for nopasss.",
-                    module: AnsibleModule::sudo_file(Role::Nopass),
-                    params: HashMap::new(),
-                },
-            ],
+            tasks: all_tasks.collect(),
         }
     }
 

@@ -63,7 +63,12 @@ pub struct SSHConfig {
 impl SSHConfig {
     /// Creates a playbook to create accounts.
     pub fn create_accounts(&self) -> Vec<AnsiblePlay> {
-        let mut plays = vec![AnsiblePlay::create_groups()];
+        let mut plays = vec![AnsiblePlay::create_groups(
+            self.users
+                .iter()
+                .flat_map(|usr| &usr.access)
+                .flat_map(|access| access.groups.clone()),
+        )];
 
         plays.extend(self.users.iter().flat_map(AnsiblePlay::create_user));
 

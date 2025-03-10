@@ -15,6 +15,7 @@ strip = "debuginfo"
 [dependencies]
 anyhow = "1.0.93"
 clap = { version = "4.5.4", features = ["derive"] }
+itertools = "0.14.0"
 serde = {version = "1.0.197", features = ["derive"]}
 serde_yaml = "0.9.34"
 tempfile = "3.10.1"
