@@ -8,23 +8,23 @@
       name: sshman-sudoer
   - name: Set sudo permissions for sudoers.
     ansible.builtin.copy:
-      mode: '440'
-      dest: /etc/sudoers.d/sshman-sudoer
-      validate: visudo -cf %s
       content: |
         %sshman-sudoer ALL=(ALL) ALL
         Defaults:%sshman-sudoer rootpw
+      validate: visudo -cf %s
+      mode: '440'
+      dest: /etc/sudoers.d/sshman-sudoer
   - name: Create nopass group.
     ansible.builtin.group:
       name: sshman-nopass
   - name: Set sudo permissions for nopasss.
     ansible.builtin.copy:
-      dest: /etc/sudoers.d/sshman-nopass
-      mode: '440'
       content: |
         %sshman-nopass ALL=(ALL) NOPASSWD: ALL
         Defaults:%sshman-nopass !requiretty
+      dest: /etc/sudoers.d/sshman-nopass
       validate: visudo -cf %s
+      mode: '440'
 - name: Create accounts for sudoerjoe.
   hosts: sydney:melbourne:&staging
   gather_facts: false
@@ -32,13 +32,10 @@
   tasks:
   - name: Create sudoer account.
     ansible.builtin.user:
-      groups: sshman-sudoer
-      group: sshman-sudoer
-      name: sudoerjoe
-  - name: Remove sudoer account password.
-    ansible.builtin.user:
-      name: sudoerjoe
       password: '*'
+      name: sudoerjoe
+      groups:
+      - sshman-sudoer
 - name: Create accounts for nopasspetey.
   hosts: melbourne
   gather_facts: false
@@ -46,11 +43,8 @@
   tasks:
   - name: Create sudoer account.
     ansible.builtin.user:
-      name: nopasspetey
-      groups: sshman-nopass
-      group: sshman-nopass
-  - name: Remove sudoer account password.
-    ansible.builtin.user:
+      groups:
+      - sshman-nopass
       name: nopasspetey
       password: '*'
 - name: Create accounts for superuser.
@@ -60,13 +54,10 @@
   tasks:
   - name: Create root alias.
     ansible.builtin.user:
-      group: root
-      name: superuser
-      groups: root
       uid: '0'
+      groups:
+      - root
       non_unique: 'true'
-  - name: Remove root alias password.
-    ansible.builtin.user:
       name: superuser
       password: '*'
 - name: Create accounts for igotfired.
@@ -81,10 +72,10 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
-      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
+      user: sudoerjoe
       state: present
       exclusive: 'true'
-      user: sudoerjoe
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
 - name: Authorize keys for nopasspetey.
   hosts: melbourne
   gather_facts: false
@@ -92,10 +83,10 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
-      user: nopasspetey
-      state: present
-      exclusive: 'true'
       key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIARL4yy4L4t/nzjMHyBjeJJeXjb4kncXYOtS+w9I4Wrj lkirkwood@lkirkwood-desktop
+      state: present
+      user: nopasspetey
+      exclusive: 'true'
 - name: Authorize keys for superuser.
   hosts: '*'
   gather_facts: false
@@ -103,10 +94,10 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
-      state: present
-      user: superuser
       exclusive: 'true'
       key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3YYRDSyInadd73js6DURXguj1/fV7Z8ovzUslda3mrPC5aFiXWY5ocMiUaN6zhVGVbt5VwC18Pmub2WrMBpbZ8FMdr1J10+pe2p0Z2vqszwgLZaemtorNqxgS25BEn3HS1gCFPhXgEf4Z2MDR0tReJoaPcp38LiV0hkOyPzYCdWC3KEDBRQKjuqjQSVx2iL5khEaouIWu2fkRngfZ1O5Z4WZT51iS5Gh6JnbeFZWDkft1rI1Dmh55qWeMyye+2A5irocwBi2DPEdH7H1Y4pRzG3/qjmys2f1KOABRhWMruiaFmEeS58p0IZYiUUcaYWN0Cm706viU2DmacnUfeWUIZ9PwaWg6i2NviPxsixV++vvbzdaBdb9e9g36clgyeRGdSGDGjH3j58L53kNDw8d4sKkHiu4uUip8OGLIuheWVCvpedCP+W9a/N08/unxI3iaX6hro6R5ScVcpFhlyhUnVFHy3x5FeckMo0jH2PA66nKjJJdlzlawpdnHz3ypeZc= superuser@company
+      state: present
+      user: superuser
 - name: Authorize keys for igotfired.
   hosts: '*'
   gather_facts: false
@@ -115,7 +106,7 @@
   - name: Authorize public key.
     ansible.posix.authorized_key:
       exclusive: 'true'
+      user: igotfired
       key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
       state: absent
-      user: igotfired
     ignore_errors: true
