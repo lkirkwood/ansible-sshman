@@ -8,12 +8,12 @@
       name: sshman-sudoer
   - name: Set sudo permissions for sudoers.
     ansible.builtin.copy:
+      dest: /etc/sudoers.d/sshman-sudoer
+      validate: visudo -cf %s
       content: |
         %sshman-sudoer ALL=(ALL) ALL
         Defaults:%sshman-sudoer rootpw
-      validate: visudo -cf %s
       mode: '440'
-      dest: /etc/sudoers.d/sshman-sudoer
   - name: Create nopass group.
     ansible.builtin.group:
       name: sshman-nopass
@@ -23,8 +23,8 @@
         %sshman-nopass ALL=(ALL) NOPASSWD: ALL
         Defaults:%sshman-nopass !requiretty
       dest: /etc/sudoers.d/sshman-nopass
-      validate: visudo -cf %s
       mode: '440'
+      validate: visudo -cf %s
 - name: Create accounts for sudoerjoe.
   hosts: sydney:melbourne:&staging
   gather_facts: false
@@ -32,10 +32,11 @@
   tasks:
   - name: Create sudoer account.
     ansible.builtin.user:
-      password: '*'
-      name: sudoerjoe
+      group: sudoerjoe
       groups:
       - sshman-sudoer
+      password: '*'
+      name: sudoerjoe
 - name: Create accounts for nopasspetey.
   hosts: melbourne
   gather_facts: false
@@ -45,8 +46,9 @@
     ansible.builtin.user:
       groups:
       - sshman-nopass
-      name: nopasspetey
       password: '*'
+      group: nopasspetey
+      name: nopasspetey
 - name: Create accounts for superuser.
   hosts: '*'
   gather_facts: false
@@ -54,12 +56,12 @@
   tasks:
   - name: Create root alias.
     ansible.builtin.user:
+      password: '*'
+      non_unique: 'true'
+      name: superuser
       uid: '0'
       groups:
       - root
-      non_unique: 'true'
-      name: superuser
-      password: '*'
 - name: Create accounts for igotfired.
   hosts: '*'
   gather_facts: false
@@ -72,10 +74,10 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
       user: sudoerjoe
       state: present
       exclusive: 'true'
-      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILaoRJBFVuJpx4fZ6Gh4WAkiPT2MoMfUJlog6byttAKc sudoerjoe@mydesktop
 - name: Authorize keys for nopasspetey.
   hosts: melbourne
   gather_facts: false
@@ -94,10 +96,10 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
-      exclusive: 'true'
-      key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3YYRDSyInadd73js6DURXguj1/fV7Z8ovzUslda3mrPC5aFiXWY5ocMiUaN6zhVGVbt5VwC18Pmub2WrMBpbZ8FMdr1J10+pe2p0Z2vqszwgLZaemtorNqxgS25BEn3HS1gCFPhXgEf4Z2MDR0tReJoaPcp38LiV0hkOyPzYCdWC3KEDBRQKjuqjQSVx2iL5khEaouIWu2fkRngfZ1O5Z4WZT51iS5Gh6JnbeFZWDkft1rI1Dmh55qWeMyye+2A5irocwBi2DPEdH7H1Y4pRzG3/qjmys2f1KOABRhWMruiaFmEeS58p0IZYiUUcaYWN0Cm706viU2DmacnUfeWUIZ9PwaWg6i2NviPxsixV++vvbzdaBdb9e9g36clgyeRGdSGDGjH3j58L53kNDw8d4sKkHiu4uUip8OGLIuheWVCvpedCP+W9a/N08/unxI3iaX6hro6R5ScVcpFhlyhUnVFHy3x5FeckMo0jH2PA66nKjJJdlzlawpdnHz3ypeZc= superuser@company
-      state: present
       user: superuser
+      key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3YYRDSyInadd73js6DURXguj1/fV7Z8ovzUslda3mrPC5aFiXWY5ocMiUaN6zhVGVbt5VwC18Pmub2WrMBpbZ8FMdr1J10+pe2p0Z2vqszwgLZaemtorNqxgS25BEn3HS1gCFPhXgEf4Z2MDR0tReJoaPcp38LiV0hkOyPzYCdWC3KEDBRQKjuqjQSVx2iL5khEaouIWu2fkRngfZ1O5Z4WZT51iS5Gh6JnbeFZWDkft1rI1Dmh55qWeMyye+2A5irocwBi2DPEdH7H1Y4pRzG3/qjmys2f1KOABRhWMruiaFmEeS58p0IZYiUUcaYWN0Cm706viU2DmacnUfeWUIZ9PwaWg6i2NviPxsixV++vvbzdaBdb9e9g36clgyeRGdSGDGjH3j58L53kNDw8d4sKkHiu4uUip8OGLIuheWVCvpedCP+W9a/N08/unxI3iaX6hro6R5ScVcpFhlyhUnVFHy3x5FeckMo0jH2PA66nKjJJdlzlawpdnHz3ypeZc= superuser@company
+      exclusive: 'true'
+      state: present
 - name: Authorize keys for igotfired.
   hosts: '*'
   gather_facts: false
@@ -105,8 +107,8 @@
   tasks:
   - name: Authorize public key.
     ansible.posix.authorized_key:
-      exclusive: 'true'
-      user: igotfired
-      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
       state: absent
+      exclusive: 'true'
+      key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICm2NWpW1qPtZneP6b5OQrW+KK1fLIaehS+j6c4A+YOF igotfired@nojob
+      user: igotfired
     ignore_errors: true
