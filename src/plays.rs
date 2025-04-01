@@ -88,6 +88,7 @@ impl<'a> AnsiblePlay<'a> {
                         module: AnsibleModule::users(HashMap::from([
                             ("name", user.name.clone().into()),
                             ("password", "*".into()),
+                            ("group", user.name.clone().into()),
                             (
                                 "groups",
                                 stmt.groups
