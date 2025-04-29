@@ -1,6 +1,6 @@
 [package]
 name = "ansible-sshman"
-version = "4.0.1"
+version = "4.0.2"
 edition = "2021"
 authors = ["Linus <linuskirkwood@gmail.com>"]
 description = "Tool for managing SSH access to machines with Ansible."
