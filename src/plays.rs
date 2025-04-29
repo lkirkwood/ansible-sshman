@@ -66,10 +66,7 @@ impl<'a> AnsiblePlay<'a> {
                         .chain(vec![&user.name])
                         .map(|grp| AnsibleTask {
                             name: "Create group user group.",
-                            module: AnsibleModule::groups(HashMap::from([(
-                                "name",
-                                grp.clone().into(),
-                            )])),
+                            module: AnsibleModule::groups(HashMap::from([("name", grp.into())])),
                             params: HashMap::new(),
                         });
 
