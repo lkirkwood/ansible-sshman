@@ -59,12 +59,21 @@ impl<'a> AnsiblePlay<'a> {
     pub fn create_user(user: &SSHUser) -> Vec<Self> {
         user.access
             .iter()
-            .map(|stmt| Self {
-                name: format!("Create accounts for {}.", user.name),
-                hosts: stmt.hosts.clone(),
-                gather_facts: false,
-                r#become: true,
-                tasks: match stmt.role {
+            .map(|stmt| {
+                let group_tasks =
+                    stmt.groups
+                        .iter()
+                        .chain(vec![&user.name])
+                        .map(|grp| AnsibleTask {
+                            name: "Create group user group.",
+                            module: AnsibleModule::groups(HashMap::from([(
+                                "name",
+                                grp.clone().into(),
+                            )])),
+                            params: HashMap::new(),
+                        });
+
+                let user_tasks = match stmt.role {
                     Role::SuperUser => vec![AnsibleTask {
                         name: "Create root alias.",
                         module: AnsibleModule::users(HashMap::from([
@@ -101,7 +110,15 @@ impl<'a> AnsiblePlay<'a> {
                         params: HashMap::new(),
                     }],
                     Role::Blocked => vec![],
-                },
+                };
+
+                Self {
+                    name: format!("Create accounts for {}.", user.name),
+                    hosts: stmt.hosts.clone(),
+                    gather_facts: false,
+                    r#become: true,
+                    tasks: group_tasks.chain(user_tasks).collect(),
+                }
             })
             .collect()
     }
